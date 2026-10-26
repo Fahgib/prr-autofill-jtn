@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Auto-Fill Monitoring PRR Jatinegara - Excel Automation</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- SheetJS (xlsx) untuk baca & tulis file Excel asli -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Tesseract.js untuk OCR Lokal Otomatis jika tanpa API Key -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    @keyframes highlightRow {
+      0% { background-color: #bbf7d0; }
+      100% { background-color: transparent; }
+    }
+    .row-updated { animation: highlightRow 2.5s ease-out; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- Top Navbar -->
+  <header class="bg-slate-900 text-white shadow-md sticky top-0 z-30 border-b border-slate-800">
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400">
+          <i data-lucide="zap" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-bold text-base sm:text-lg tracking-tight">PRR Auto-Fill Excel</h1>
+            <span class="text-[11px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30">
+              UP3 Jatinegara
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">Ekstraksi Otomatis Screenshot Monitoring Status PRR &rarr; Kolom Excel (DUPR, BAPR, DPR, DUPPR, SUPPR)</p>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex flex-wrap items-center gap-2.5">
+        <button onclick="openSettingsModal()" class="inline-flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-lg text-xs font-medium transition">
+          <i data-lucide="settings" class="w-4 h-4 text-slate-400"></i>
+          <span id="engineBadge">Mode: Auto (AI + OCR)</span>
+        </button>
+
+        <label class="cursor-pointer inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 px-3.5 py-2 rounded-lg text-xs font-medium transition shadow-sm">
+          <i data-lucide="folder-open" class="w-4 h-4 text-amber-400"></i>
+          <span>Buka File Excel (.xlsx)</span>
+          <input id="excelFileInput" type="file" accept=".xlsx,.xls,.csv" class="hidden" />
+        </label>
+
+        <button id="downloadExcelBtn" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-semibold transition shadow-sm">
+          <i data-lucide="download" class="w-4 h-4"></i>
+          <span>Download Excel (.xlsx)</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-[1600px] w-full mx-auto px-4 sm:px-6 py-5 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- Left Column: Queue, Photo Upload, Extraction History -->
+    <div class="lg:col-span-4 space-y-5 flex flex-col">
+
+      <!-- Next IDPEL Helper Card -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+            <i data-lucide="list-todo" class="w-4 h-4 text-teal-600"></i>
+            Antrean IDPEL Belum Terisi
+          </span>
+          <span id="remainingCountBadge" class="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+            0 tersisa
+          </span>
+        </div>
+
+        <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 flex items-center justify-between gap-2">
+          <div class="min-w-0">
+            <div class="text-[11px] text-slate-500 truncate" id="nextQueueName">Memuat data...</div>
+            <div class="font-mono text-lg font-bold text-slate-900 tracking-tight" id="nextQueueIdpel">-</div>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button id="copyNextIdpelBtn" class="inline-flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition shadow-sm">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              <span>Salin IDPEL</span>
+            </button>
+            <button id="skipNextIdpelBtn" title="Lewati ke IDPEL berikutnya" class="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-200/70 rounded-lg transition">
+              <i data-lucide="chevron-right" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dropzone / Paste Area -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="font-semibold text-sm text-slate-800 flex items-center gap-2">
+            <i data-lucide="camera" class="w-4 h-4 text-teal-600"></i>
+            <span>Kirim / Paste Foto Monitoring PRR</span>
+          </h2>
+          <span class="text-[11px] bg-teal-50 text-teal-700 border border-teal-200 px-2 py-0.5 rounded font-medium">
+            Support Ctrl+V
+          </span>
+        </div>
+
+        <div id="photoDropzone" class="border-2 border-dashed border-slate-300 hover:border-teal-500 bg-slate-50/70 hover:bg-teal-50/30 transition rounded-xl p-6 text-center cursor-pointer">
+          <input id="photoFileInput" type="file" accept="image/*" multiple class="hidden" />
+          <div class="w-12 h-12 rounded-full bg-teal-100/80 text-teal-700 flex items-center justify-center mx-auto mb-3">
+            <i data-lucide="image-plus" class="w-6 h-6"></i>
+          </div>
+          <p class="text-sm font-semibold text-slate-700 mb-1">
+            Klik untuk pilih foto, Drag & Drop, atau tekan <kbd class="px-1.5 py-0.5 text-xs bg-white border border-slate-300 rounded shadow-sm font-mono">Ctrl+V</kbd>
+          </p>
+          <p class="text-xs text-slate-500">
+            Otomatis mendeteksi <b>ID Pelanggan</b> atau mengisi baris IDPEL yang sedang Anda pilih di tabel.
+          </p>
+        </div>
+
+        <!-- Target Override Selector -->
+        <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs gap-2">
+          <span class="text-slate-500">Target baris manual (opsional):</span>
+          <div class="flex items-center gap-1.5">
+            <span id="selectedTargetBadge" class="font-mono font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+              Otomatis dari Foto
+            </span>
+            <button id="clearTargetBtn" class="hidden text-rose-600 hover:underline text-[11px]">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mapping Rules Card -->
+      <div class="bg-slate-900 text-slate-200 rounded-xl p-4 text-xs space-y-2">
+        <div class="font-semibold text-white flex items-center justify-between">
+          <span class="flex items-center gap-1.5">
+            <i data-lucide="Cpu" class="w-4 h-4 text-amber-400"></i>
+            Aturan Pemetaan Kolom Otomatis
+          </span>
+          <span class="text-[10px] text-emerald-400 font-mono">Kosong = "kosong"</span>
+        </div>
+        <div class="grid grid-cols-2 gap-1.5 text-[11px] pt-1">
+          <div class="bg-slate-800/90 px-2.5 py-1.5 rounded flex justify-between">
+            <span class="text-slate-400">DUPR</span>
+            <span class="font-mono text-amber-300">&rarr; NO dupr</span>
+          </div>
+          <div class="bg-slate-800/90 px-2.5 py-1.5 rounded flex justify-between">
+            <span class="text-slate-400">BAPR</span>
+            <span class="font-mono text-amber-300">&rarr; NO BAPR</span>
+          </div>
+          <div class="bg-slate-800/90 px-2.5 py-1.5 rounded flex justify-between">
+            <span class="text-slate-400">DPR</span>
+            <span class="font-mono text-amber-300">&rarr; NO DPR</span>
+          </div>
+          <div class="bg-slate-800/90 px-2.5 py-1.5 rounded flex justify-between">
+            <span class="text-slate-400">ENTRI DUPPR</span>
+            <span class="font-mono text-amber-300">&rarr; NO DUPPR</span>
+          </div>
+          <div class="bg-slate-800/90 px-2.5 py-1.5 rounded col-span-2 flex justify-between">
+            <span class="text-slate-400">TERBIT SUPPR-UP</span>
+            <span class="font-mono text-amber-300">&rarr; NO SUPPR</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Processing Log -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex-1 flex flex-col min-h-[240px]">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-semibold text-sm text-slate-800 flex items-center gap-2">
+            <i data-lucide="activity" class="w-4 h-4 text-teal-600"></i>
+            <span>Riwayat Ekstraksi Foto</span>
+          </h3>
+          <button id="clearLogsBtn" class="text-[11px] text-slate-400 hover:text-slate-600">Bersihkan</button>
+        </div>
+        <div id="extractionLogs" class="space-y-2.5 overflow-y-auto custom-scrollbar flex-1 pr-1 max-h-[340px]">
+          <div class="text-xs text-slate-400 text-center py-8">
+            Belum ada foto yang diproses. Paste screenshot (<kbd class="px-1 py-0.5 bg-slate-100 border rounded">Ctrl+V</kbd>) untuk memulai.
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Interactive Excel Table -->
+    <div class="lg:col-span-8 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+
+      <!-- Table Toolbar -->
+      <div class="p-4 border-b border-slate-200 bg-slate-50/60 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="font-bold text-sm text-slate-800" id="activeFileName">Penghapusan Prr Dekom JTN.xlsx (Data Sampel)</h2>
+              <span id="autoSaveIndicator" class="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-medium">
+                Tersimpan di Browser
+              </span>
+            </div>
+            <p class="text-xs text-slate-500 mt-0.5" id="statsSummaryText">Total: 0 baris | Terisi: 0 | Belum Terisi: 0</p>
+          </div>
+        </div>
+
+        <!-- Search & Filter Controls -->
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="relative">
+            <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+            <input
+              id="searchInput"
+              type="text"
+              placeholder="Cari IDPEL / Nama / No Dok..."
+              class="pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 w-52"
+            />
+          </div>
+
+          <select id="filterStatusSelect" class="text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-teal-500">
+            <option value="all">Semua Baris</option>
+            <option value="filled">Sudah Terisi</option>
+            <option value="empty">Masih Kosong</option>
+          </select>
+
+          <button id="addNewRowBtn" class="inline-flex items-center gap-1 text-xs bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg font-medium transition">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+            <span>Tambah IDPEL</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="w-full bg-slate-100 h-1.5">
+        <div id="progressBarFill" class="bg-teal-600 h-1.5 transition-all duration-300" style="width: 0%"></div>
+      </div>
+
+      <!-- Spreadsheet Table Container -->
+      <div class="overflow-auto custom-scrollbar flex-1 max-h-[680px]">
+        <table class="w-full text-left border-collapse text-xs">
+          <thead class="bg-slate-100/90 text-slate-600 sticky top-0 z-10 border-b border-slate-200 shadow-sm">
+            <tr>
+              <th class="py-2.5 px-3 font-semibold w-12 text-center">#</th>
+              <th class="py-2.5 px-3 font-semibold w-36">IDPEL</th>
+              <th class="py-2.5 px-3 font-semibold min-w-[150px]">NAMA</th>
+              <th class="py-2.5 px-3 font-semibold min-w-[185px] bg-amber-50/70 text-amber-900 border-l border-slate-200">NO dupr</th>
+              <th class="py-2.5 px-3 font-semibold min-w-[185px] bg-amber-50/70 text-amber-900">NO BAPR</th>
+              <th class="py-2.5 px-3 font-semibold min-w-[185px] bg-amber-50/70 text-amber-900">NO DPR</th>
+              <th class="py-2.5 px-3 font-semibold min-w-[185px] bg-amber-50/70 text-amber-900">NO DUPPR</th>
+              <th class="py-2.5 px-3 font-semibold min-w-[195px] bg-amber-50/70 text-amber-900">NO SUPPR</th>
+              <th class="py-2.5 px-3 font-semibold w-20 text-center">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="excelTableBody" class="divide-y divide-slate-200"></tbody>
+        </table>
+      </div>
+
+      <!-- Pagination Footer -->
+      <div class="p-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs text-slate-600">
+        <div id="paginationInfo">Menampilkan 0 - 0 dari 0 baris</div>
+        <div class="flex items-center gap-1.5">
+          <button id="prevPageBtn" class="px-2.5 py-1 rounded border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40">Sebelumnya</button>
+          <span id="pageIndicator" class="px-2 font-medium">Hal 1</span>
+          <button id="nextPageBtn" class="px-2.5 py-1 rounded border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40">Berikutnya</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Settings Modal (API Key & Mode Ekstraksi) -->
+  <div id="settingsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-base text-slate-900 flex items-center gap-2">
+          <i data-lucide="sliders" class="w-5 h-5 text-teal-600"></i>
+          Pengaturan Mesin Ekstraksi Foto
+        </h3>
+        <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs text-slate-600">
+        <p>
+          Aplikasi ini memiliki <b>Dual-Engine</b>:
+        </p>
+        <ul class="list-disc pl-5 space-y-1">
+          <li><b>Gemini Vision AI:</b> Akurasi tertinggi, tahan foto miring/kamera HP. Menggunakan variabel <code>GEMINI_API_KEY</code> di Vercel atau API Key di bawah ini.</li>
+          <li><b>Smart OCR Lokal (Tesseract.js):</b> 100% gratis tanpa API Key, langsung membaca pola <code>/DUPR/</code>, <code>/BAPR/</code>, <code>/DPR/</code>, <code>/DUPPR/</code>, dan <code>/SUPPR-UP/</code> di browser Anda.</li>
+        </ul>
+
+        <div class="pt-2">
+          <label class="block font-semibold text-slate-700 mb-1">Gemini API Key (Opsional jika belum diset di Vercel):</label>
+          <input
+            id="customApiKeyInput"
+            type="password"
+            placeholder="AIzaSy..."
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-xs focus:outline-none focus:ring-2 focus:ring-teal-500"
+          />
+          <p class="text-[11px] text-slate-400 mt-1">
+            Disimpan aman hanya di browser perangkat Anda (<code>localStorage</code>). Kosongkan jika sudah mengatur di Vercel atau ingin memakai OCR Lokal.
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+        <button onclick="resetStoredData()" class="mr-auto text-xs text-rose-600 hover:underline">Reset Data Tersimpan</button>
+        <button onclick="closeSettingsModal()" class="px-3.5 py-2 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100">Batal</button>
+        <button onclick="saveSettings()" class="px-4 py-2 rounded-lg text-xs font-semibold bg-teal-600 hover:bg-teal-700 text-white">Simpan Pengaturan</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. STATE & DATA DEFAULT (SAMPEL DARI PENGHAPUSAN PRR DEKOM JTN.XLSX)
+    // =========================================================================
+    const REQUIRED_DOC_COLS = ['NO dupr', 'NO BAPR', 'NO DPR', 'NO DUPPR', 'NO SUPPR'];
+    const STORAGE_KEY_DATA = 'prr_jtn_excel_rows_v1';
+    const STORAGE_KEY_COLS = 'prr_jtn_excel_cols_v1';
+    const STORAGE_KEY_FILENAME = 'prr_jtn_excel_filename_v1';
+    const STORAGE_KEY_APIKEY = 'prr_jtn_custom_gemini_key';
+
+    const DEFAULT_COLUMNS = [
+      'BULAN_REKAP', 'IDPEL', 'UNITUPI', 'UNITAP', 'UNITUP', 'NAMA', 'ALAMAT', 'RT', 'RW',
+      'NO dupr', 'NO BAPR', 'NO DPR', 'NO DUPPR', 'NO SUPPR', 'TARIF', 'DAYA', 'RP_DPP_PRR'
+    ];
+
+    const DEFAULT_SAMPLE_ROWS = [
+      { BULAN_REKAP: 202609, IDPEL: '544103539467', UNITUPI: 54, UNITAP: 54410, UNITUP: 54410, NAMA: 'ROESMAN', ALAMAT: 'JL.SWADAYA RT.04/06 RW BUNGA', 'NO dupr': '005/54410/DUPR/VI/2021', 'NO BAPR': '0005/54410/BAPR/VI/2021', 'NO DPR': '0005/54410/DPR/VI/2021', 'NO DUPPR': '0005/54410/DUPPR/VI/2021', 'NO SUPPR': '0005/54410/SUPPR-UP/VI/2021', TARIF: 'R1', DAYA: 1300, RP_DPP_PRR: 9833402 },
+      { BULAN_REKAP: 202609, IDPEL: '544103704586', UNITUPI: 54, UNITAP: 54410, UNITUP: 54410, NAMA: 'RIMIN', ALAMAT: 'TEBET BARAT', 'NO dupr': '', 'NO BAPR': '', 'NO DPR': '', 'NO DUPPR': '', 'NO SUPPR': '', TARIF: 'B1', DAYA: 1300, RP_DPP_PRR: 7841782 },
+      { BULAN_REKAP: 202609, IDPEL: '544103600633', UNITUPI: 54, UNITAP: 54410, UNITUP: 54410, NAMA: 'RISWANDI ARIFIN', ALAMAT: 'JLKAMPUNG PONCOL BKT', 'NO dupr': '', 'NO BAPR': '', 'NO DPR': '', 'NO DUPPR': '', 'NO SUPPR': '', TARIF: 'R1', DAYA: 1300, RP_DPP_PRR: 423027 },
+      { BULAN_REKAP: 202609, IDPEL: '544103597107', UNITUPI: 54, UNITAP: 54410, UNITUP: 54410, NAMA: 'TUBAGUS TONY H SH', ALAMAT: 'JLF NO 14 A MENDAL', 'NO dupr': '', 'NO BAPR': '', 'NO DPR': '', 'NO DUPPR': '', 'NO SUPPR': '', TARIF: 'R1', DAYA: 1300, RP_DPP_PRR: 11369644 },
+      { BULAN_REKAP: 202609, IDPEL: '544102184736', UNITUPI: 54, UNITAP: 54410, UNITUP: 54410, NAMA: 'SAYADI', ALAMAT: 'CIP BESAR SLT RT1/1', 'NO dupr': '', 'NO BAPR': '', 'NO DPR': '', 'NO DUPPR': '', 'NO SUPPR': '', TARIF: 'B1', DAYA: 2200, RP_DPP_PRR: 833900 },
+      { BULAN_REKAP: 202609, IDPEL: '544101471444', UNITUPI: 54, UNITAP: 54410, UNITUP: 54410, NAMA: 'SARYAT', ALAMAT: 'JL OTISTA 3 RT7/8', 'NO dupr': '', 'NO BAPR': '', 'NO DPR': '', 'NO DUPPR': '', 'NO SUPPR': '', TARIF: 'R1', DAYA: 2200, RP_DPP_PRR: 1377014 }
+    ];
+
+    let excelRows = [];
+    let excelColumns = [];
+    let currentFileName = 'Penghapusan Prr Dekom JTN.xlsx';
+    let selectedRowIndex = null; // Jika user memilih baris manual untuk diisi
+    let queueSkipOffset = 0;
+    let currentPage = 1;
+    const pageSize = 50;
+    let lastUpdatedRowIdx = null;
+
+    // =========================================================================
+    // 2. INISIALISASI & LOCALSTORAGE PERSISTENCE
+    // =========================================================================
+    function initApp() {
+      lucide.createIcons();
+      const savedRows = localStorage.getItem(STORAGE_KEY_DATA);
+      const savedCols = localStorage.getItem(STORAGE_KEY_COLS);
+      const savedName = localStorage.getItem(STORAGE_KEY_FILENAME);
+
+      if (savedRows && savedCols) {
+        try {
+          excelRows = JSON.parse(savedRows);
+          excelColumns = JSON.parse(savedCols);
+          currentFileName = savedName || 'Penghapusan Prr Dekom JTN.xlsx';
+        } catch (e) {
+          loadDefaultSample();
+        }
+      } else {
+        loadDefaultSample();
+      }
+
+      document.getElementById('customApiKeyInput').value = localStorage.getItem(STORAGE_KEY_APIKEY) || '';
+      renderAll();
+    }
+
+    function loadDefaultSample() {
+      excelColumns = [...DEFAULT_COLUMNS];
+      excelRows = JSON.parse(JSON.stringify(DEFAULT_SAMPLE_ROWS));
+      currentFileName = 'Penghapusan Prr Dekom JTN (Sampel).xlsx';
+      saveToStorage();
+    }
+
+    function saveToStorage() {
+      try {
+        localStorage.setItem(STORAGE_KEY_DATA, JSON.stringify(excelRows));
+        localStorage.setItem(STORAGE_KEY_COLS, JSON.stringify(excelColumns));
+        localStorage.setItem(STORAGE_KEY_FILENAME, currentFileName);
+      } catch (err) {
+        console.warn('Ukuran file melebihi kuota localStorage, tetap berjalan di memori RAM.', err);
+      }
+    }
+
+    function resetStoredData() {
+      if (!confirm('Reset data di browser kembali ke sampel awal?')) return;
+      localStorage.removeItem(STORAGE_KEY_DATA);
+      localStorage.removeItem(STORAGE_KEY_COLS);
+      localStorage.removeItem(STORAGE_KEY_FILENAME);
+      loadDefaultSample();
+      renderAll();
+      closeSettingsModal();
+    }
+
+    // =========================================================================
+    // 3. BACA & DOWNLOAD FILE EXCEL (.XLSX)
+    // =========================================================================
+    document.getElementById('excelFileInput').addEventListener('change', function (e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (evt) {
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheet];
+
+        const rawMatrix = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+        if (rawMatrix.length === 0) return alert('File Excel kosong!');
+
+        const headers = rawMatrix[0].map(h => String(h).trim());
+        REQUIRED_DOC_COLS.forEach(reqCol => {
+          if (!headers.includes(reqCol)) headers.push(reqCol);
+        });
+
+        const parsedRows = [];
+        for (let i = 1; i < rawMatrix.length; i++) {
+          const rowArr = rawMatrix[i];
+          if (!rowArr || rowArr.length === 0) continue;
+          const obj = {};
+          headers.forEach((colName, idx) => {
+            obj[colName] = rowArr[idx] !== undefined && rowArr[idx] !== null ? String(rowArr[idx]).trim() : '';
+          });
+          if (obj['IDPEL'] || obj['NAMA']) {
+            parsedRows.push(obj);
+          }
+        }
+
+        excelColumns = headers;
+        excelRows = parsedRows;
+        currentFileName = file.name;
+        currentPage = 1;
+        queueSkipOffset = 0;
+        saveToStorage();
+        renderAll();
+        addLogItem('success', `Berhasil memuat ${parsedRows.length} baris dari ${file.name}`);
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    document.getElementById('downloadExcelBtn').addEventListener('click', function () {
+      if (excelRows.length === 0) return alert('Tidak ada data untuk diunduh.');
+
+      const exportData = excelRows.map(row => {
+        const orderedObj = {};
+        excelColumns.forEach(col => {
+          orderedObj[col] = row[col] !== undefined ? row[col] : '';
+        });
+        return orderedObj;
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData, { header: excelColumns });
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+
+      const outName = currentFileName.replace(/\.xlsx$/i, '') + '_TERISI.xlsx';
+      XLSX.writeFile(workbook, outName);
+    });
+
+    // =========================================================================
+    // 4. DUAL-ENGINE PHOTO EXTRACTION (GEMINI VISION AI + LOCAL OCR REGEX)
+    // =========================================================================
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result;
+          const base64Clean = result.split(',')[1];
+          resolve({ base64Clean, dataUrl: result, mimeType: file.type || 'image/jpeg' });
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // Engine 2: Smart Local OCR + Regex khusus format dokumen PRR PLN
+    async function extractWithLocalOCR(dataUrl) {
+      const { data: { text } } = await Tesseract.recognize(dataUrl, 'eng');
+      const normalized = text.replace(/\r\n/g, '\n');
+
+      // 1. Cari ID Pelanggan (12 digit angka, umumnya diawali 54410)
+      const idpelMatch = normalized.match(/\b(54\d{10}|\d{12})\b/);
+      const idpel = idpelMatch ? idpelMatch[1] : '';
+
+      // Helper pencari nomor dokumen berdasarkan kode jenis dokumen
+      function findDocNumber(docTypeRegex) {
+        const regex = new RegExp(`([0-9OIl]{2,5}\\s*\\/\\s*\\d{5}\\s*\\/\\s*${docTypeRegex}\\s*\\/\\s*[IVXLCDM0-9]+\\s*\\/\\s*20\\d{2})`, 'i');
+        const m = normalized.match(regex);
+        if (!m) return 'kosong';
+        return m[1]
+          .replace(/\s+/g, '')
+          .replace(/^[O]/i, '0')
+          .toUpperCase();
+      }
+
+      return {
+        idpel,
+        dupr: findDocNumber('DUPR'),
+        bapr: findDocNumber('BAPR'),
+        dpr: findDocNumber('DPR'),
+        duppr: findDocNumber('DUPPR'),
+        suppr: findDocNumber('SUPPR(?:-[A-Z0-9]+)?'),
+        engineUsed: 'OCR Lokal'
+      };
+    }
+
+    // Engine 1: Serverless Vercel /api/extract (Gemini 2.5 Flash) dengan fallback otomatis ke OCR Lokal
+    async function extractDataFromPhoto(file) {
+      const { base64Clean, dataUrl, mimeType } = await fileToBase64(file);
+      const customApiKey = localStorage.getItem(STORAGE_KEY_APIKEY) || '';
+
+      try {
+        const response = await fetch('/api/extract', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imageBase64: base64Clean,
+            mimeType,
+            customApiKey
+          })
+        });
+
+        if (response.ok) {
+          const aiData = await response.json();
+          return { ...aiData, engineUsed: 'Gemini AI' };
+        }
+      } catch (err) {
+        console.info('Serverless API tidak terjangkau, beralih ke OCR Lokal...', err);
+      }
+
+      // Fallback langsung ke OCR Lokal jika belum ada API Key atau dijalankan lokal tanpa backend
+      return await extractWithLocalOCR(dataUrl);
+    }
+
+    function normalizeDocValue(val) {
+      if (!val) return 'kosong';
+      const trimmed = String(val).trim();
+      if (trimmed === '' || trimmed === '-' || trimmed.toLowerCase() === 'null' || trimmed.toLowerCase() === 'kosong') {
+        return 'kosong';
+      }
+      return trimmed;
+    }
+
+    async function handleFilesUpload(fileList) {
+      const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+      if (files.length === 0) return;
+
+      for (const file of files) {
+        const logId = addLogItem('loading', `Memproses foto "${file.name}"...`);
+
+        try {
+          const extracted = await extractDataFromPhoto(file);
+          const cleanIdpel = (extracted.idpel || '').replace(/\D/g, '');
+
+          const mapped = {
+            'NO dupr': normalizeDocValue(extracted.dupr),
+            'NO BAPR': normalizeDocValue(extracted.bapr),
+            'NO DPR': normalizeDocValue(extracted.dpr),
+            'NO DUPPR': normalizeDocValue(extracted.duppr),
+            'NO SUPPR': normalizeDocValue(extracted.suppr)
+          };
+
+          let targetIdx = -1;
+
+          // Prioritas 1: Baris yang dipilih manual oleh user
+          if (selectedRowIndex !== null && excelRows[selectedRowIndex]) {
+            targetIdx = selectedRowIndex;
+          }
+          // Prioritas 2: Cocokkan IDPEL dari foto dengan IDPEL di Excel
+          else if (cleanIdpel) {
+            targetIdx = excelRows.findIndex(r => String(r['IDPEL']).trim() === cleanIdpel);
+          }
+
+          // Jika IDPEL ada di foto tapi belum ada di tabel Excel, tambahkan baris baru
+          if (targetIdx === -1 && cleanIdpel) {
+            const newRow = {};
+            excelColumns.forEach(c => newRow[c] = '');
+            newRow['IDPEL'] = cleanIdpel;
+            newRow['NAMA'] = '(IDPEL Baru dari Foto)';
+            Object.assign(newRow, mapped);
+            excelRows.unshift(newRow);
+            targetIdx = 0;
+          }
+
+          if (targetIdx !== -1) {
+            Object.assign(excelRows[targetIdx], mapped);
+            lastUpdatedRowIdx = targetIdx;
+            saveToStorage();
+
+            // Lompat ke halaman tempat baris tersebut berada
+            currentPage = Math.floor(targetIdx / pageSize) + 1;
+            renderAll();
+
+            const rowIdpel = excelRows[targetIdx]['IDPEL'];
+            const rowName = excelRows[targetIdx]['NAMA'] || '';
+            updateLogItem(
+              logId,
+              'success',
+              `[${extracted.engineUsed}] IDPEL ${rowIdpel} (${rowName}) berhasil diisi!`,
+              mapped
+            );
+          } else {
+            updateLogItem(
+              logId,
+              'error',
+              `ID Pelanggan tidak terbaca di foto. Klik tombol "Target" pada salah satu baris tabel lalu paste ulang foto.`,
+              mapped
+            );
+          }
+        } catch (err) {
+          updateLogItem(logId, 'error', `Gagal memproses ${file.name}: ${err.message}`);
+        }
+      }
+    }
+
+    // Event Listeners untuk Upload & Paste Screenshot (Ctrl+V)
+    const dropzone = document.getElementById('photoDropzone');
+    const photoInput = document.getElementById('photoFileInput');
+
+    dropzone.addEventListener('click', () => photoInput.click());
+    photoInput.addEventListener('change', e => {
+      handleFilesUpload(e.target.files);
+      photoInput.value = '';
+    });
+
+    dropzone.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropzone.classList.add('border-teal-500', 'bg-teal-50/50');
+    });
+    dropzone.addEventListener('dragleave', () => {
+      dropzone.classList.remove('border-teal-500', 'bg-teal-50/50');
+    });
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropzone.classList.remove('border-teal-500', 'bg-teal-50/50');
+      if (e.dataTransfer.files?.length) handleFilesUpload(e.dataTransfer.files);
+    });
+
+    window.addEventListener('paste', e => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const imageFiles = [];
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          const blob = item.getAsFile();
+          if (blob) imageFiles.push(blob);
+        }
+      }
+      if (imageFiles.length > 0) {
+        e.preventDefault();
+        handleFilesUpload(imageFiles);
+      }
+    });
+
+    // =========================================================================
+    // 5. RENDER TABEL, ANTREAN IDPEL, DAN LOG
+    // =========================================================================
+    function isRowFilled(row) {
+      return REQUIRED_DOC_COLS.some(col => {
+        const val = String(row[col] || '').trim();
+        return val !== '';
+      });
+    }
+
+    function renderAll() {
+      document.getElementById('activeFileName').textContent = currentFileName;
+
+      const total = excelRows.length;
+      const filledCount = excelRows.filter(isRowFilled).length;
+      const emptyCount = total - filledCount;
+      const pct = total > 0 ? Math.round((filledCount / total) * 100) : 0;
+
+      document.getElementById('statsSummaryText').textContent =
+        `Total: ${total} baris | Terisi: ${filledCount} (${pct}%) | Belum Terisi: ${emptyCount}`;
+      document.getElementById('progressBarFill').style.width = `${pct}%`;
+      document.getElementById('remainingCountBadge').textContent = `${emptyCount} belum terisi`;
+
+      // Update Antrean IDPEL Berikutnya
+      const emptyRows = excelRows.filter(r => !isRowFilled(r));
+      if (emptyRows.length > 0) {
+        const targetQueueRow = emptyRows[queueSkipOffset % emptyRows.length];
+        document.getElementById('nextQueueIdpel').textContent = targetQueueRow['IDPEL'] || '-';
+        document.getElementById('nextQueueName').textContent =
+          `${targetQueueRow['NAMA'] || 'Tanpa Nama'} — ${targetQueueRow['ALAMAT'] || ''}`;
+      } else {
+        document.getElementById('nextQueueIdpel').textContent = 'Semua Selesai!';
+        document.getElementById('nextQueueName').textContent = 'Seluruh baris telah terisi.';
+      }
+
+      renderTable();
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('excelTableBody');
+      const searchVal = document.getElementById('searchInput').value.trim().toLowerCase();
+      const statusFilter = document.getElementById('filterStatusSelect').value;
+
+      const filtered = excelRows
+        .map((row, originalIndex) => ({ row, originalIndex }))
+        .filter(({ row }) => {
+          const filled = isRowFilled(row);
+          if (statusFilter === 'filled' && !filled) return false;
+          if (statusFilter === 'empty' && filled) return false;
+          if (!searchVal) return true;
+          return (
+            String(row['IDPEL'] || '').toLowerCase().includes(searchVal) ||
+            String(row['NAMA'] || '').toLowerCase().includes(searchVal) ||
+            REQUIRED_DOC_COLS.some(c => String(row[c] || '').toLowerCase().includes(searchVal))
+          );
+        });
+
+      const totalFiltered = filtered.length;
+      const maxPage = Math.max(1, Math.ceil(totalFiltered / pageSize));
+      if (currentPage > maxPage) currentPage = maxPage;
+
+      const startIdx = (currentPage - 1) * pageSize;
+      const pageItems = filtered.slice(startIdx, startIdx + pageSize);
+
+      document.getElementById('paginationInfo').textContent =
+        totalFiltered > 0
+          ? `Menampilkan ${startIdx + 1} - ${Math.min(startIdx + pageSize, totalFiltered)} dari ${totalFiltered} baris`
+          : 'Tidak ada baris yang cocok';
+      document.getElementById('pageIndicator').textContent = `Hal ${currentPage} / ${maxPage}`;
+      document.getElementById('prevPageBtn').disabled = currentPage <= 1;
+      document.getElementById('nextPageBtn').disabled = currentPage >= maxPage;
+
+      tbody.innerHTML = pageItems
+        .map(({ row, originalIndex }) => {
+          const isSelectedTarget = selectedRowIndex === originalIndex;
+          const isRecentlyUpdated = lastUpdatedRowIdx === originalIndex;
+
+          const renderDocCell = colName => {
+            const val = String(row[colName] || '').trim();
+            const isKosong = val.toLowerCase() === 'kosong';
+            const badgeClass = isKosong
+              ? 'bg-rose-50 text-rose-700 border-rose-200'
+              : val
+              ? 'bg-emerald-50/70 text-emerald-900 border-emerald-300'
+              : 'bg-white text-slate-700 border-slate-200';
+
+            return `
+              <td class="p-1.5 border-l border-slate-100">
+                <input
+                  type="text"
+                  value="${val.replace(/"/g, '&quot;')}"
+                  placeholder="-"
+                  onchange="updateCellValue(${originalIndex}, '${colName}', this.value)"
+                  class="w-full px-2 py-1 rounded border text-[11px] font-mono focus:outline-none focus:ring-2 focus:ring-teal-500 ${badgeClass}"
+                />
+              </td>
+            `;
+          };
+
+          return `
+            <tr class="hover:bg-slate-50/90 transition ${isRecentlyUpdated ? 'row-updated' : ''} ${isSelectedTarget ? 'bg-teal-50/70' : ''}">
+              <td class="py-2 px-3 text-center font-mono text-slate-400">${originalIndex + 1}</td>
+              <td class="py-2 px-3 font-mono font-semibold text-slate-900">
+                <div class="flex items-center gap-1.5">
+                  <span>${row['IDPEL'] || '-'}</span>
+                  <button onclick="copyText('${row['IDPEL']}')" title="Salin IDPEL" class="text-slate-400 hover:text-teal-600">
+                    <i data-lucide="copy" class="w-3 h-3"></i>
+                  </button>
+                </div>
+              </td>
+              <td class="py-2 px-3 font-medium text-slate-700 truncate max-w-[170px]" title="${row['NAMA'] || ''}">
+                ${row['NAMA'] || '-'}
+              </td>
+              ${REQUIRED_DOC_COLS.map(renderDocCell).join('')}
+              <td class="py-2 px-3 text-center">
+                <button
+                  onclick="selectRowAsTarget(${originalIndex})"
+                  class="px-2 py-1 rounded text-[11px] font-medium transition ${
+                    isSelectedTarget
+                      ? 'bg-teal-600 text-white'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }"
+                >
+                  ${isSelectedTarget ? 'Aktif' : 'Target'}
+                </button>
+              </td>
+            </tr>
+          `;
+        })
+        .join('');
+
+      lucide.createIcons();
+    }
+
+    window.updateCellValue = function (rowIndex, colName, newVal) {
+      if (!excelRows[rowIndex]) return;
+      excelRows[rowIndex][colName] = newVal.trim();
+      saveToStorage();
+      renderAll();
+    };
+
+    window.selectRowAsTarget = function (rowIndex) {
+      if (selectedRowIndex === rowIndex) {
+        selectedRowIndex = null;
+        document.getElementById('selectedTargetBadge').textContent = 'Otomatis dari Foto';
+        document.getElementById('clearTargetBtn').classList.add('hidden');
+      } else {
+        selectedRowIndex = rowIndex;
+        const idpel = excelRows[rowIndex]['IDPEL'];
+        document.getElementById('selectedTargetBadge').textContent = `Baris #${rowIndex + 1} (${idpel})`;
+        document.getElementById('clearTargetBtn').classList.remove('hidden');
+      }
+      renderTable();
+    };
+
+    document.getElementById('clearTargetBtn').addEventListener('click', () => {
+      selectedRowIndex = null;
+      document.getElementById('selectedTargetBadge').textContent = 'Otomatis dari Foto';
+      document.getElementById('clearTargetBtn').classList.add('hidden');
+      renderTable();
+    });
+
+    window.copyText = function (text) {
+      if (!text) return;
+      navigator.clipboard.writeText(String(text));
+    };
+
+    document.getElementById('copyNextIdpelBtn').addEventListener('click', function () {
+      const idpel = document.getElementById('nextQueueIdpel').textContent.trim();
+      if (!idpel || idpel === '-' || idpel === 'Semua Selesai!') return;
+      navigator.clipboard.writeText(idpel);
+      const originalHtml = this.innerHTML;
+      this.innerHTML = `<span class="text-xs">Tersalin!</span>`;
+      setTimeout(() => {
+        this.innerHTML = originalHtml;
+        lucide.createIcons();
+      }, 1200);
+    });
+
+    document.getElementById('skipNextIdpelBtn').addEventListener('click', () => {
+      queueSkipOffset++;
+      renderAll();
+    });
+
+    document.getElementById('searchInput').addEventListener('input', () => {
+      currentPage = 1;
+      renderTable();
+    });
+    document.getElementById('filterStatusSelect').addEventListener('change', () => {
+      currentPage = 1;
+      renderTable();
+    });
+    document.getElementById('prevPageBtn').addEventListener('click', () => {
+      if (currentPage > 1) {
+        currentPage--;
+        renderTable();
+      }
+    });
+    document.getElementById('nextPageBtn').addEventListener('click', () => {
+      currentPage++;
+      renderTable();
+    });
+
+    document.getElementById('addNewRowBtn').addEventListener('click', () => {
+      const idpel = prompt('Masukkan ID Pelanggan (12 digit):');
+      if (!idpel) return;
+      const nama = prompt('Masukkan Nama Pelanggan (opsional):') || '';
+      const newObj = {};
+      excelColumns.forEach(c => (newObj[c] = ''));
+      newObj['IDPEL'] = idpel.trim();
+      newObj['NAMA'] = nama.trim();
+      excelRows.unshift(newObj);
+      saveToStorage();
+      renderAll();
+    });
+
+    // =========================================================================
+    // 6. LOG RIWAYAT & MODAL PENGATURAN
+    // =========================================================================
+    function addLogItem(status, message, details = null) {
+      const container = document.getElementById('extractionLogs');
+      if (container.querySelector('.text-center')) container.innerHTML = '';
+
+      const id = 'log_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+      const div = document.createElement('div');
+      div.id = id;
+      div.className = 'p-2.5 rounded-lg border text-xs transition bg-slate-50 border-slate-200';
+      div.innerHTML = `<div class="font-medium text-slate-700">${message}</div>`;
+      container.prepend(div);
+      updateLogItem(id, status, message, details);
+      return id;
+    }
+
+    function updateLogItem(id, status, message, details = null) {
+      const el = document.getElementById(id);
+      if (!el) return;
+
+      const styles = {
+        loading: 'bg-amber-50/70 border-amber-200 text-amber-900',
+        success: 'bg-emerald-50/70 border-emerald-200 text-emerald-900',
+        error: 'bg-rose-50/70 border-rose-200 text-rose-900'
+      };
+      el.className = `p-2.5 rounded-lg border text-xs transition ${styles[status] || styles.loading}`;
+
+      let detailsHtml = '';
+      if (details) {
+        detailsHtml = `
+          <div class="mt-1.5 pt-1.5 border-t border-black/10 grid grid-cols-1 gap-0.5 font-mono text-[10px]">
+            <div>DUPR: <b>${details['NO dupr']}</b></div>
+            <div>BAPR: <b>${details['NO BAPR']}</b></div>
+            <div>DPR: <b>${details['NO DPR']}</b></div>
+            <div>DUPPR: <b>${details['NO DUPPR']}</b></div>
+            <div>SUPPR: <b>${details['NO SUPPR']}</b></div>
+          </div>
+        `;
+      }
+
+      el.innerHTML = `
+        <div class="font-semibold">${message}</div>
+        ${detailsHtml}
+      `;
+    }
+
+    document.getElementById('clearLogsBtn').addEventListener('click', () => {
+      document.getElementById('extractionLogs').innerHTML = `
+        <div class="text-xs text-slate-400 text-center py-8">
+          Riwayat dibersihkan.
+        </div>
+      `;
+    });
+
+    window.openSettingsModal = function () {
+      const modal = document.getElementById('settingsModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.closeSettingsModal = function () {
+      const modal = document.getElementById('settingsModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    window.saveSettings = function () {
+      const key = document.getElementById('customApiKeyInput').value.trim();
+      if (key) {
+        localStorage.setItem(STORAGE_KEY_APIKEY, key);
+      } else {
+        localStorage.removeItem(STORAGE_KEY_APIKEY);
+      }
+      closeSettingsModal();
+    };
+
+    initApp();
+  </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "prr-autofill-jtn",
+  "version": "1.0.0",
+  "description": "Aplikasi Auto-Fill Foto Monitoring Status PRR ke Excel",
+  "private": true,
+  "scripts": {
+    "dev": "npx vercel dev",
+    "start": "npx serve ."
+  },
+  "engines": {
+    "node": ">=18.x"
+  }
+}
