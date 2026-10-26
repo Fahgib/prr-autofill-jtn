@@ -21,7 +21,7 @@
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
     .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     @keyframes highlightRow {
-      0% { background-color: #bbf7d0; }
+      0% { background-color: #fde68a; }
       100% { background-color: transparent; }
     }
     .row-updated { animation: highlightRow 2.5s ease-out; }
@@ -88,7 +88,7 @@
     <!-- Left Column: Queue, Photo Upload, Extraction History -->
     <div class="lg:col-span-4 space-y-5 flex flex-col">
 
-      <!-- Next IDPEL Helper Card (DENGAN MAJU/MUNDUR & SKIP DATA KOSONG) -->
+      <!-- Next IDPEL Helper Card (DENGAN MAJU/MUNDUR & SKIP DATA KOSONG WARNA KUNING) -->
       <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
         <div class="flex items-center justify-between">
           <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
@@ -113,6 +113,7 @@
               <div class="flex items-center gap-2 mt-0.5">
                 <span class="font-mono text-lg font-bold text-slate-900 tracking-tight" id="nextQueueIdpel">-</span>
                 <span id="nextQueueRowBadge" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-700 font-semibold">Baris #-</span>
+                <span id="nextQueueSkippedTag" class="hidden text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-200 text-amber-900">Pernah Di-Skip</span>
               </div>
             </div>
 
@@ -127,7 +128,7 @@
               </button>
               <button
                 id="skipNextIdpelBtn"
-                title="Maju / Lewati ke IDPEL berikutnya"
+                title="Lewati sementara (tandai kuning Di-Skip) & maju ke IDPEL berikutnya"
                 class="p-2 text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition shadow-sm disabled:opacity-40"
               >
                 <i data-lucide="chevron-right" class="w-4 h-4"></i>
@@ -147,12 +148,32 @@
 
             <button
               id="markQueueKosongBtn"
-              title="Isi kelima kolom dengan kata 'kosong' untuk IDPEL ini dan lanjut ke antrean berikutnya"
-              class="inline-flex items-center justify-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold px-3 py-2 rounded-lg transition shadow-sm"
+              title="Tandai warna KUNING (Tidak Ada Data / Di-Skip) dan lanjut ke antrean berikutnya"
+              class="inline-flex items-center justify-center gap-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 text-xs font-semibold px-3 py-2 rounded-lg transition shadow-sm"
             >
-              <i data-lucide="ban" class="w-3.5 h-3.5"></i>
-              <span>Data Kosong (Skip)</span>
+              <i data-lucide="skip-forward" class="w-3.5 h-3.5 text-amber-700"></i>
+              <span>Tidak Ada Data (Skip)</span>
             </button>
+          </div>
+        </div>
+
+        <!-- Keterangan Warna Indikator -->
+        <div class="grid grid-cols-4 gap-1.5 pt-1 text-[10px] font-medium">
+          <div class="flex items-center gap-1 px-2 py-1 rounded bg-emerald-50 border border-emerald-200 text-emerald-800">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+            <span class="truncate">Ada Data</span>
+          </div>
+          <div class="flex items-center gap-1 px-2 py-1 rounded bg-amber-100 border border-amber-300 text-amber-900">
+            <span class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+            <span class="truncate">Di-Skip</span>
+          </div>
+          <div class="flex items-center gap-1 px-2 py-1 rounded bg-rose-50 border border-rose-200 text-rose-800">
+            <span class="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
+            <span class="truncate">Dok Kosong</span>
+          </div>
+          <div class="flex items-center gap-1 px-2 py-1 rounded bg-white border border-slate-200 text-slate-600">
+            <span class="w-2 h-2 rounded-full bg-slate-300 shrink-0"></span>
+            <span class="truncate">Belum Diisi</span>
           </div>
         </div>
       </div>
@@ -225,7 +246,7 @@
             <i data-lucide="cpu" class="w-4 h-4 text-amber-400"></i>
             Aturan Pemetaan Kolom Otomatis
           </span>
-          <span class="text-[10px] text-emerald-400 font-mono">Kosong = "kosong"</span>
+          <span class="text-[10px] text-amber-300 font-mono">Skip = Kuning | Kosong = Merah</span>
         </div>
         <div class="grid grid-cols-2 gap-1.5 text-[11px] pt-1">
           <div class="bg-slate-800/90 px-2.5 py-1.5 rounded flex justify-between">
@@ -282,7 +303,7 @@
                 Tersimpan Otomatis
               </span>
             </div>
-            <p class="text-xs text-slate-500 mt-0.5" id="statsSummaryText">Total: 0 baris | Terisi: 0 | Belum Terisi: 0</p>
+            <p class="text-xs text-slate-500 mt-0.5" id="statsSummaryText">Total: 0 baris | Terisi: 0 | Di-Skip: 0 | Belum Terisi: 0</p>
           </div>
         </div>
 
@@ -300,8 +321,9 @@
 
           <select id="filterStatusSelect" class="text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-teal-500">
             <option value="all">Semua Baris</option>
-            <option value="filled">Sudah Terisi</option>
-            <option value="empty">Masih Kosong</option>
+            <option value="filled">Sudah Terisi Dokumen (Hijau)</option>
+            <option value="skipped">Di-Skip / Tidak Ada Data (Kuning)</option>
+            <option value="empty">Masih Kosong / Belum Diisi (Putih)</option>
           </select>
 
           <button id="addNewRowBtn" class="inline-flex items-center gap-1 text-xs bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg font-medium transition">
@@ -365,7 +387,7 @@
       <div class="space-y-3 text-xs text-slate-600">
         <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-1">
           <div class="font-semibold">Cara Kerja Live Sync:</div>
-          <p>Setiap kali Anda Paste foto (<kbd class="px-1 py-0.5 bg-white border rounded">Ctrl+V</kbd>), klik <b>Data Kosong (Skip)</b>, atau mengubah isi tabel, aplikasi otomatis mengirim perubahan ke Google Spreadsheet Anda detik itu juga.</p>
+          <p>Setiap kali Anda Paste foto (<kbd class="px-1 py-0.5 bg-white border rounded">Ctrl+V</kbd>), klik <b>Tidak Ada Data (Skip)</b>, atau mengubah isi tabel, aplikasi otomatis mengirim perubahan ke Google Spreadsheet Anda detik itu juga.</p>
         </div>
 
         <div>
@@ -453,6 +475,7 @@
     const STORAGE_KEY_APIKEY = 'prr_jtn_custom_gemini_key';
     const STORAGE_KEY_GAS_URL = 'prr_jtn_gas_webapp_url';
     const STORAGE_KEY_SHEET_LINK = 'prr_jtn_sheet_view_url';
+    const STORAGE_KEY_SKIPPED_IDPELS = 'prr_jtn_skipped_idpels_v1';
 
     const MONTH_TO_ROMAN = {
       1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V', 6: 'VI',
@@ -476,10 +499,11 @@
 
     let excelRows = [];
     let excelColumns = [];
+    let skippedIdpelSet = new Set(); // Menyimpan IDPEL yang di-skip agar berwarna kuning
     let currentFileName = 'Penghapusan Prr Dekom JTN.xlsx';
     let selectedRowIndex = null;
     let queueSkipOffset = 0;
-    let currentQueueOriginalIndex = null; // Menyimpan index baris asli dari antrean yang sedang tampil
+    let currentQueueOriginalIndex = null;
     let currentPage = 1;
     const pageSize = 50;
     let lastUpdatedRowIdx = null;
@@ -732,6 +756,15 @@
       const savedRows = localStorage.getItem(STORAGE_KEY_DATA);
       const savedCols = localStorage.getItem(STORAGE_KEY_COLS);
       const savedName = localStorage.getItem(STORAGE_KEY_FILENAME);
+      const savedSkipped = localStorage.getItem(STORAGE_KEY_SKIPPED_IDPELS);
+
+      if (savedSkipped) {
+        try {
+          skippedIdpelSet = new Set(JSON.parse(savedSkipped));
+        } catch (e) {
+          skippedIdpelSet = new Set();
+        }
+      }
 
       if (savedRows && savedCols) {
         try {
@@ -770,6 +803,7 @@
         localStorage.setItem(STORAGE_KEY_DATA, JSON.stringify(excelRows));
         localStorage.setItem(STORAGE_KEY_COLS, JSON.stringify(excelColumns));
         localStorage.setItem(STORAGE_KEY_FILENAME, currentFileName);
+        localStorage.setItem(STORAGE_KEY_SKIPPED_IDPELS, JSON.stringify([...skippedIdpelSet]));
       } catch (err) {
         console.warn('Ukuran file melebihi kuota localStorage, tetap berjalan di memori RAM.', err);
       }
@@ -780,6 +814,8 @@
       localStorage.removeItem(STORAGE_KEY_DATA);
       localStorage.removeItem(STORAGE_KEY_COLS);
       localStorage.removeItem(STORAGE_KEY_FILENAME);
+      localStorage.removeItem(STORAGE_KEY_SKIPPED_IDPELS);
+      skippedIdpelSet.clear();
       loadDefaultSample();
       renderAll();
       closeSettingsModal();
@@ -1038,6 +1074,13 @@
 
           if (targetIdx !== -1) {
             Object.assign(excelRows[targetIdx], mapped);
+            const rowIdpel = String(excelRows[targetIdx]['IDPEL'] || '').trim();
+
+            // Jika foto memiliki minimal 1 nomor dokumen asli, hapus dari daftar skip
+            if (hasAtLeastOneRealDocument(excelRows[targetIdx])) {
+              skippedIdpelSet.delete(rowIdpel);
+            }
+
             lastUpdatedRowIdx = targetIdx;
             fixAllExistingRowsRoman(true);
             saveToStorage();
@@ -1045,7 +1088,6 @@
             currentPage = Math.floor(targetIdx / pageSize) + 1;
             renderAll();
 
-            const rowIdpel = excelRows[targetIdx]['IDPEL'];
             const rowName = excelRows[targetIdx]['NAMA'] || '';
 
             let syncMsg = '';
@@ -1117,7 +1159,7 @@
     });
 
     // =========================================================================
-    // 7. RENDER TABEL, ANTREAN IDPEL (MAJU/MUNDUR & SET KOSONG), DAN LOG
+    // 7. LOGIKA STATUS BARIS: ADA DATA (HIJAU) VS DI-SKIP/TIDAK ADA DATA (KUNING) VS BELUM DIISI (PUTIH)
     // =========================================================================
     function isRowFilled(row) {
       return REQUIRED_DOC_COLS.some(col => {
@@ -1126,25 +1168,45 @@
       });
     }
 
-    // Fungsi menandai 1 baris sebagai "kosong" semua (bisa dipanggil dari Antrean maupun Tabel)
+    // Cek apakah baris punya minimal 1 nomor dokumen asli (bukan kosong dan bukan '-')
+    function hasAtLeastOneRealDocument(row) {
+      return REQUIRED_DOC_COLS.some(col => {
+        const val = String(row[col] || '').trim().toLowerCase();
+        return val !== '' && val !== '-' && val !== 'kosong' && val !== 'skip';
+      });
+    }
+
+    // Cek apakah seluruh 5 kolom pada baris berisi 'kosong' / 'skip' (memang tidak ada datanya sama sekali / di-skip)
+    function isRowAllKosongOrSkipped(row) {
+      const idpel = String(row['IDPEL'] || '').trim();
+      const allColsKosong = REQUIRED_DOC_COLS.every(col => {
+        const val = String(row[col] || '').trim().toLowerCase();
+        return val === 'kosong' || val === 'skip';
+      });
+      if (allColsKosong) return true;
+      if (!isRowFilled(row) && skippedIdpelSet.has(idpel)) return true;
+      return false;
+    }
+
+    // Fungsi menandai 1 baris sebagai "Tidak Ada Data / Di-Skip" (warna KUNING)
     window.markRowAsAllKosong = async function (rowIndex) {
       if (rowIndex === null || rowIndex === undefined || !excelRows[rowIndex]) return;
 
       const row = excelRows[rowIndex];
+      const idpel = String(row['IDPEL'] || '').trim();
       REQUIRED_DOC_COLS.forEach(col => {
         row[col] = 'kosong';
       });
+      if (idpel) skippedIdpelSet.add(idpel);
 
       lastUpdatedRowIdx = rowIndex;
       saveToStorage();
 
-      // Pindahkan halaman tabel ke baris yang baru ditandai kosong agar terlihat
       currentPage = Math.floor(rowIndex / pageSize) + 1;
       renderAll();
 
-      const idpel = row['IDPEL'] || '-';
       const nama = row['NAMA'] || '';
-      const logId = addLogItem('loading', `Menandai IDPEL ${idpel} (${nama}) sebagai "kosong"...`);
+      const logId = addLogItem('loading', `Menandai IDPEL ${idpel} (${nama}) sebagai Di-Skip / Tidak Ada Data (Kuning)...`);
 
       let syncMsg = '';
       if (getGasUrl()) {
@@ -1159,7 +1221,7 @@
       updateLogItem(
         logId,
         'success',
-        `IDPEL ${idpel} (${nama}) ditandai "kosong" & lanjut ke antrean berikutnya${syncMsg}`,
+        `[DI-SKIP / KUNING] IDPEL ${idpel} (${nama}) ditandai Tidak Ada Data & lanjut ke antrean berikutnya${syncMsg}`,
         row
       );
     };
@@ -1168,34 +1230,43 @@
       document.getElementById('activeFileName').textContent = currentFileName;
 
       const total = excelRows.length;
-      const filledCount = excelRows.filter(isRowFilled).length;
+      const filledWithDocCount = excelRows.filter(hasAtLeastOneRealDocument).length;
+      const skippedYellowCount = excelRows.filter(isRowAllKosongOrSkipped).length;
       const emptyRowsWithIdx = excelRows
         .map((row, idx) => ({ row, idx }))
         .filter(item => !isRowFilled(item.row));
       const emptyCount = emptyRowsWithIdx.length;
-      const pct = total > 0 ? Math.round((filledCount / total) * 100) : 0;
+      const doneTotal = excelRows.filter(isRowFilled).length;
+      const pct = total > 0 ? Math.round((doneTotal / total) * 100) : 0;
 
       document.getElementById('statsSummaryText').textContent =
-        `Total: ${total} baris | Terisi: ${filledCount} (${pct}%) | Belum Terisi: ${emptyCount}`;
+        `Total: ${total} baris | Ada Dokumen: ${filledWithDocCount} | Di-Skip (Kuning): ${skippedYellowCount} | Belum Terisi: ${emptyCount}`;
       document.getElementById('progressBarFill').style.width = `${pct}%`;
       document.getElementById('remainingCountBadge').textContent = `${emptyCount} belum terisi`;
 
       const prevBtn = document.getElementById('prevQueueIdpelBtn');
       const nextBtn = document.getElementById('skipNextIdpelBtn');
       const markKosongBtn = document.getElementById('markQueueKosongBtn');
+      const skippedTag = document.getElementById('nextQueueSkippedTag');
 
       if (emptyCount > 0) {
-        // Pastikan queueSkipOffset selalu positif dan berada dalam rentang [0, emptyCount - 1]
         queueSkipOffset = ((queueSkipOffset % emptyCount) + emptyCount) % emptyCount;
         const targetItem = emptyRowsWithIdx[queueSkipOffset];
         const targetQueueRow = targetItem.row;
         currentQueueOriginalIndex = targetItem.idx;
+        const qIdpel = String(targetQueueRow['IDPEL'] || '').trim();
 
-        document.getElementById('nextQueueIdpel').textContent = targetQueueRow['IDPEL'] || '-';
+        document.getElementById('nextQueueIdpel').textContent = qIdpel || '-';
         document.getElementById('nextQueueName').textContent =
           `${targetQueueRow['NAMA'] || 'Tanpa Nama'} — ${targetQueueRow['ALAMAT'] || ''}`;
         document.getElementById('nextQueueRowBadge').textContent = `Baris #${targetItem.idx + 1}`;
         document.getElementById('queuePositionBadge').textContent = `Urutan ${queueSkipOffset + 1} / ${emptyCount}`;
+
+        if (skippedIdpelSet.has(qIdpel)) {
+          skippedTag.classList.remove('hidden');
+        } else {
+          skippedTag.classList.add('hidden');
+        }
 
         prevBtn.disabled = emptyCount <= 1;
         nextBtn.disabled = emptyCount <= 1;
@@ -1206,6 +1277,7 @@
         document.getElementById('nextQueueName').textContent = 'Seluruh baris telah terisi.';
         document.getElementById('nextQueueRowBadge').textContent = 'Selesai';
         document.getElementById('queuePositionBadge').textContent = '0 / 0';
+        skippedTag.classList.add('hidden');
 
         prevBtn.disabled = true;
         nextBtn.disabled = true;
@@ -1223,9 +1295,14 @@
       const filtered = excelRows
         .map((row, originalIndex) => ({ row, originalIndex }))
         .filter(({ row }) => {
-          const filled = isRowFilled(row);
-          if (statusFilter === 'filled' && !filled) return false;
-          if (statusFilter === 'empty' && filled) return false;
+          const hasDoc = hasAtLeastOneRealDocument(row);
+          const isSkippedYellow = isRowAllKosongOrSkipped(row);
+          const isUntouchedEmpty = !isRowFilled(row) && !isSkippedYellow;
+
+          if (statusFilter === 'filled' && !hasDoc) return false;
+          if (statusFilter === 'skipped' && !isSkippedYellow) return false;
+          if (statusFilter === 'empty' && !isUntouchedEmpty) return false;
+
           if (!searchVal) return true;
           return (
             String(row['IDPEL'] || '').toLowerCase().includes(searchVal) ||
@@ -1254,22 +1331,31 @@
           const isSelectedTarget = selectedRowIndex === originalIndex;
           const isCurrentQueue = currentQueueOriginalIndex === originalIndex;
           const isRecentlyUpdated = lastUpdatedRowIdx === originalIndex;
+          const rowIsSkippedYellow = isRowAllKosongOrSkipped(row);
 
           const renderDocCell = colName => {
             const val = String(row[colName] || '').trim();
-            const isKosong = val.toLowerCase() === 'kosong';
-            const badgeClass = isKosong
-              ? 'bg-rose-50 text-rose-700 border-rose-200'
-              : val
-              ? 'bg-emerald-50/70 text-emerald-900 border-emerald-300'
-              : 'bg-white text-slate-700 border-slate-200';
+            const isKosongText = val.toLowerCase() === 'kosong' || val.toLowerCase() === 'skip';
+
+            let badgeClass = 'bg-white text-slate-700 border-slate-200';
+
+            if (rowIsSkippedYellow) {
+              // KUNING: Karena baris ini di-skip / memang tidak ada datanya sama sekali
+              badgeClass = 'bg-amber-100 text-amber-900 border-amber-400 font-semibold';
+            } else if (isKosongText) {
+              // MERAH MUDA: Baris ini punya dokumen lain, tapi kolom dokumen yang satu ini kosong
+              badgeClass = 'bg-rose-50 text-rose-700 border-rose-200';
+            } else if (val !== '') {
+              // HIJAU: Ada nomor dokumen
+              badgeClass = 'bg-emerald-50/80 text-emerald-900 border-emerald-300';
+            }
 
             return `
               <td class="p-1.5 border-l border-slate-100">
                 <input
                   type="text"
                   value="${val.replace(/"/g, '&quot;')}"
-                  placeholder="-"
+                  placeholder="${rowIsSkippedYellow ? 'DI-SKIP' : '-'}"
                   onchange="updateCellValue(${originalIndex}, '${colName}', this.value)"
                   class="w-full px-2 py-1 rounded border text-[11px] font-mono focus:outline-none focus:ring-2 focus:ring-teal-500 ${badgeClass}"
                 />
@@ -1277,10 +1363,16 @@
             `;
           };
 
+          const rowBgClass = isSelectedTarget
+            ? 'bg-teal-50/80'
+            : rowIsSkippedYellow
+            ? 'bg-amber-50/70'
+            : isCurrentQueue
+            ? 'bg-sky-50/60'
+            : '';
+
           return `
-            <tr class="hover:bg-slate-50/90 transition ${isRecentlyUpdated ? 'row-updated' : ''} ${
-              isSelectedTarget ? 'bg-teal-50/80' : isCurrentQueue ? 'bg-amber-50/50' : ''
-            }">
+            <tr class="hover:bg-slate-100/70 transition ${isRecentlyUpdated ? 'row-updated' : ''} ${rowBgClass}">
               <td class="py-2 px-3 text-center font-mono text-slate-400">${originalIndex + 1}</td>
               <td class="py-2 px-3 font-mono font-semibold text-slate-900">
                 <div class="flex items-center gap-1.5">
@@ -1291,7 +1383,14 @@
                 </div>
               </td>
               <td class="py-2 px-3 font-medium text-slate-700 truncate max-w-[170px]" title="${row['NAMA'] || ''}">
-                ${row['NAMA'] || '-'}
+                <div class="flex items-center gap-1.5">
+                  <span class="truncate">${row['NAMA'] || '-'}</span>
+                  ${
+                    rowIsSkippedYellow
+                      ? '<span class="shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-200 text-amber-900">Skip</span>'
+                      : ''
+                  }
+                </div>
               </td>
               ${REQUIRED_DOC_COLS.map(renderDocCell).join('')}
               <td class="py-2 px-2 text-center">
@@ -1309,10 +1408,10 @@
                   </button>
                   <button
                     onclick="markRowAsAllKosong(${originalIndex})"
-                    title="Set semua kolom baris ini menjadi 'kosong'"
-                    class="px-1.5 py-1 rounded text-[11px] font-medium bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition"
+                    title="Tandai baris ini Tidak Ada Data / Di-Skip (Warna Kuning)"
+                    class="px-2 py-1 rounded text-[11px] font-semibold bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 transition"
                   >
-                    Kosong
+                    Skip
                   </button>
                 </div>
               </td>
@@ -1328,6 +1427,12 @@
       if (!excelRows[rowIndex]) return;
       const trimmed = newVal.trim();
       excelRows[rowIndex][colName] = trimmed ? fixSingleDocFormat(trimmed) : '';
+
+      const idpel = String(excelRows[rowIndex]['IDPEL'] || '').trim();
+      if (hasAtLeastOneRealDocument(excelRows[rowIndex])) {
+        skippedIdpelSet.delete(idpel);
+      }
+
       saveToStorage();
       renderAll();
 
@@ -1389,8 +1494,15 @@
       }
     });
 
-    // Tombol Maju (>) di Kartu Antrean
+    // Tombol Maju (>) di Kartu Antrean -> Tandai IDPEL yang dilewati menjadi Kuning (Skip Sementara) & maju
     document.getElementById('skipNextIdpelBtn').addEventListener('click', () => {
+      if (currentQueueOriginalIndex !== null && excelRows[currentQueueOriginalIndex]) {
+        const skippedIdpel = String(excelRows[currentQueueOriginalIndex]['IDPEL'] || '').trim();
+        if (skippedIdpel) {
+          skippedIdpelSet.add(skippedIdpel);
+          saveToStorage();
+        }
+      }
       queueSkipOffset++;
       renderAll();
       if (currentQueueOriginalIndex !== null) {
@@ -1399,7 +1511,7 @@
       }
     });
 
-    // Tombol "Data Kosong (Skip)" di Kartu Antrean -> Isi kelima kolom dengan 'kosong' & lanjut otomatis
+    // Tombol "Tidak Ada Data (Skip)" di Kartu Antrean -> Isi kelima kolom 'kosong' (Warna Kuning) & lanjut otomatis
     document.getElementById('markQueueKosongBtn').addEventListener('click', () => {
       if (currentQueueOriginalIndex === null) return;
       markRowAsAllKosong(currentQueueOriginalIndex);
