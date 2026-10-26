@@ -138,7 +138,7 @@
             Klik untuk pilih foto, Drag & Drop, atau tekan <kbd class="px-1.5 py-0.5 text-xs bg-white border border-slate-300 rounded shadow-sm font-mono">Ctrl+V</kbd>
           </p>
           <p class="text-xs text-slate-500">
-            Otomatis mendeteksi <b>ID Pelanggan</b> dan langsung menulis hasilnya ke <b>Google Spreadsheet</b> secara <i>real-time</i>.
+            Otomatis mendeteksi <b>ID Pelanggan</b> (kode unit <code>410</code> maupun <code>54410</code>) dan langsung mengisi <b>Google Spreadsheet</b>.
           </p>
         </div>
 
@@ -205,7 +205,7 @@
             <span class="font-mono text-amber-300">&rarr; NO DUPPR</span>
           </div>
           <div class="bg-slate-800/90 px-2.5 py-1.5 rounded col-span-2 flex justify-between">
-            <span class="text-slate-400">TERBIT SUPPR-UP</span>
+            <span class="text-slate-400">TERBIT SUPPR-UP / AP</span>
             <span class="font-mono text-amber-300">&rarr; NO SUPPR</span>
           </div>
         </div>
@@ -380,7 +380,7 @@
         <p>Aplikasi ini memiliki <b>Dual-Engine</b>:</p>
         <ul class="list-disc pl-5 space-y-1">
           <li><b>Gemini Vision AI:</b> Menggunakan variabel <code>GEMINI_API_KEY</code> di Vercel atau API Key di bawah ini.</li>
-          <li><b>Smart OCR Lokal (Tesseract.js):</b> 100% gratis tanpa API Key, dilengkapi koreksi otomatis angka Romawi (<code>1I</code> &rarr; <code>II</code>).</li>
+          <li><b>Smart OCR Lokal (Tesseract.js):</b> 100% gratis tanpa API Key, mendukung kode unit <code>410</code> &amp; <code>54410</code> serta koreksi otomatis angka Romawi (<code>1I</code> &rarr; <code>II</code>).</li>
         </ul>
 
         <div class="pt-2">
@@ -428,10 +428,8 @@
 
     const DEFAULT_SAMPLE_ROWS = [
       { BULAN_REKAP: 202609, IDPEL: '544103539467', UNITUPI: 54, UNITAP: 54410, UNITUP: 54410, NAMA: 'ROESMAN', ALAMAT: 'JL.SWADAYA RT.04/06 RW BUNGA', 'NO dupr': '005/54410/DUPR/VI/2021', 'NO BAPR': '0005/54410/BAPR/VI/2021', 'NO DPR': '0005/54410/DPR/VI/2021', 'NO DUPPR': '0005/54410/DUPPR/VI/2021', 'NO SUPPR': '0005/54410/SUPPR-UP/VI/2021', TARIF: 'R1', DAYA: 1300, RP_DPP_PRR: 9833402 },
-      { BULAN_REKAP: 202609, IDPEL: '544103704586', UNITUPI: 54, UNITAP: 54410, UNITUP: 54410, NAMA: 'RIMIN', ALAMAT: 'TEBET BARAT', 'NO dupr': '', 'NO BAPR': '', 'NO DPR': '', 'NO DUPPR': '', 'NO SUPPR': '', TARIF: 'B1', DAYA: 1300, RP_DPP_PRR: 7841782 },
-      { BULAN_REKAP: 202609, IDPEL: '544103600633', UNITUPI: 54, UNITAP: 54410, UNITUP: 54410, NAMA: 'RISWANDI ARIFIN', ALAMAT: 'JLKAMPUNG PONCOL BKT', 'NO dupr': '', 'NO BAPR': '', 'NO DPR': '', 'NO DUPPR': '', 'NO SUPPR': '', TARIF: 'R1', DAYA: 1300, RP_DPP_PRR: 423027 },
+      { BULAN_REKAP: 202609, IDPEL: '544103800621', UNITUPI: 54, UNITAP: 54410, UNITUP: 54410, NAMA: 'RONY KARYAWANSYAH', ALAMAT: 'JATINEGARA', 'NO dupr': '', 'NO BAPR': '', 'NO DPR': '', 'NO DUPPR': '', 'NO SUPPR': '', TARIF: 'R1', DAYA: 1300, RP_DPP_PRR: 0 },
       { BULAN_REKAP: 202609, IDPEL: '544103597107', UNITUPI: 54, UNITAP: 54410, UNITUP: 54410, NAMA: 'TUBAGUS TONY H SH', ALAMAT: 'JLF NO 14 A MENDAL', 'NO dupr': '', 'NO BAPR': '', 'NO DPR': '', 'NO DUPPR': '', 'NO SUPPR': '', TARIF: 'R1', DAYA: 1300, RP_DPP_PRR: 11369644 },
-      { BULAN_REKAP: 202609, IDPEL: '544102184736', UNITUPI: 54, UNITAP: 54410, UNITUP: 54410, NAMA: 'SAYADI', ALAMAT: 'CIP BESAR SLT RT1/1', 'NO dupr': '', 'NO BAPR': '', 'NO DPR': '', 'NO DUPPR': '', 'NO SUPPR': '', TARIF: 'B1', DAYA: 2200, RP_DPP_PRR: 833900 },
       { BULAN_REKAP: 202609, IDPEL: '544101471444', UNITUPI: 54, UNITAP: 54410, UNITUP: 54410, NAMA: 'SARYAT', ALAMAT: 'JL OTISTA 3 RT7/8', 'NO dupr': '', 'NO BAPR': '', 'NO DPR': '', 'NO DUPPR': '', 'NO SUPPR': '', TARIF: 'R1', DAYA: 2200, RP_DPP_PRR: 1377014 }
     ];
 
@@ -445,9 +443,9 @@
     let lastUpdatedRowIdx = null;
 
     // =========================================================================
-    // 2. KOREKSI OTOMATIS BULAN ROMAWI (1I / 11 -> II)
+    // 2. KOREKSI OTOMATIS BULAN ROMAWI (1I / 11 -> II) & KODE UNIT (410 / 54410)
     // =========================================================================
-    function fixSingleDocFormat(rawDoc, fallbackRomanMonth = null) {
+    function fixSingleDocFormat(rawDoc, fallbackRomanMonth = null, expectedDocType = null) {
       if (!rawDoc) return 'kosong';
       const cleaned = String(rawDoc).trim().replace(/\s+/g, '').toUpperCase();
       if (!cleaned || cleaned === '-' || cleaned === 'KOSONG' || cleaned === 'NULL') {
@@ -457,19 +455,32 @@
       const parts = cleaned.split('/');
       if (parts.length < 5) return cleaned;
 
+      // Segmen 1: Nomor Urut (contoh: 003, 0002)
       let seq = parts[0]
         .replace(/[OQD]/g, '0')
         .replace(/[IL|!]/g, '1')
         .replace(/S/g, '5')
         .replace(/B/g, '8');
 
+      // Segmen 2: Kode Unit (mendukung 2-6 digit seperti 54, 410, 54410)
       let unit = parts[1]
         .replace(/[OQD]/g, '0')
         .replace(/[IL|!]/g, '1')
-        .replace(/S/g, '5');
+        .replace(/S/g, '5')
+        .replace(/B/g, '8');
 
-      let docType = parts[2];
+      // Segmen 3: Jenis Dokumen (DUPR, BAPR, DPR, DUPPR, SUPPR-UP / SUPPR-AP)
+      let docType = parts[2]
+        .replace(/^[0O]UPPR$/, 'DUPPR')
+        .replace(/^[0O]UPR$/, 'DUPR')
+        .replace(/^[0O]PR$/, 'DPR')
+        .replace(/^8APR$/, 'BAPR')
+        .replace(/^5UPPR/, 'SUPPR');
+      if (expectedDocType && !docType.startsWith('SUPPR')) {
+        docType = expectedDocType;
+      }
 
+      // Segmen 4: Bulan Romawi (I s/d XII) -> ubah semua angka 1 / l / | menjadi I
       let roman = parts[3]
         .replace(/[1L|!]/g, 'I')
         .replace(/0/g, 'O');
@@ -488,6 +499,7 @@
         }
       }
 
+      // Segmen 5: Tahun (2010 - 2026)
       let year = parts[4]
         .replace(/[OQD]/g, '0')
         .replace(/[IL|!]/g, '1');
@@ -586,7 +598,6 @@
       }
     }
 
-    // Ambil seluruh baris langsung dari Google Spreadsheet
     window.pullFromGoogleSheet = async function () {
       const gasUrl = getGasUrl();
       if (!gasUrl) return openSheetModal();
@@ -617,7 +628,6 @@
       }
     };
 
-    // Kirim 1 baris yang baru terisi langsung ke Google Spreadsheet (Real-Time)
     async function syncSingleRowToGoogleSheet(rowObj) {
       const gasUrl = getGasUrl();
       if (!gasUrl || !rowObj || !rowObj['IDPEL']) return false;
@@ -643,7 +653,6 @@
       return true;
     }
 
-    // Kirim semua baris yang sudah terisi di browser sekaligus ke Google Spreadsheet
     window.pushAllFilledToGoogleSheet = async function () {
       const gasUrl = getGasUrl();
       if (!gasUrl) return openSheetModal();
@@ -707,7 +716,6 @@
       updateSheetUiIndicators();
       renderAll();
 
-      // Jika sudah terhubung ke Google Spreadsheet, otomatis muat data terbaru
       if (getGasUrl()) {
         pullFromGoogleSheet();
       }
@@ -808,7 +816,7 @@
     });
 
     // =========================================================================
-    // 6. DUAL-ENGINE PHOTO EXTRACTION + IMAGE UPSCALING + VALIDASI TGL PROSES
+    // 6. DUAL-ENGINE PHOTO EXTRACTION (SUPPORT KODE UNIT 410 & 54410)
     // =========================================================================
     function fileToBase64(file) {
       return new Promise((resolve, reject) => {
@@ -843,24 +851,49 @@
       });
     }
 
+    // Engine 2: Smart Local OCR + Support Kode Unit 2-6 Digit (54, 410, 54410)
     async function extractWithLocalOCR(dataUrl) {
       const enhancedDataUrl = await upscaleImageForOCR(dataUrl);
       const { data: { text } } = await Tesseract.recognize(enhancedDataUrl, 'eng');
       const normalized = text.replace(/\r\n/g, '\n');
 
+      // 1. Cari ID Pelanggan (12 digit angka)
       const idpelMatch = normalized.match(/\b(54\d{10}|\d{12})\b/);
       const idpel = idpelMatch ? idpelMatch[1] : '';
 
+      // Cari bulan dominan dari kolom Tgl Proses (DD/MM/YYYY) di foto
       let globalRomanMonth = null;
-      const allDates = [...normalized.matchAll(/\b\d{2}\/(\d{2})\/20\d{2}\b/g)];
+      const allDates = [...normalized.matchAll(/\b\d{2}\/(\d{2})\/(?:19|20)\d{2}\b/g)];
       if (allDates.length > 0) {
         const mNum = parseInt(allDates[0][1], 10);
         if (MONTH_TO_ROMAN[mNum]) globalRomanMonth = MONTH_TO_ROMAN[mNum];
       }
 
-      function findDocNumber(docTypeRegex) {
+      // 2. Pencari Nomor Dokumen Fleksibel (Kode Unit bisa 2 s/d 6 digit: 54, 410, 54410)
+      function findDocNumber(docTypeRegex, canonicalType = null, rowLabelRegex = null) {
+        // Prioritas A: Jika diberikan label baris (misal ENTRI DUPPR vs BAPPR, atau TERBIT SUPPR-UP vs SUPPR-UPI)
+        if (rowLabelRegex) {
+          const labelPattern = new RegExp(
+            `${rowLabelRegex}[^\\n]*?([0-9OQDIL|!SB]{1,6}\\s*\\/\\s*[0-9OQDIL|!SB]{2,6}\\s*\\/\\s*${docTypeRegex}\\s*\\/\\s*[IVXLCDM0-9L|!]+\\s*\\/\\s*(?:19|20)[0-9OQDIL|!]{2})([^\\n]*)`,
+            'i'
+          );
+          const lm = normalized.match(labelPattern);
+          if (lm) {
+            const rawDoc = lm[1];
+            const restOfLine = lm[2] || '';
+            let romanFromDate = globalRomanMonth;
+            const dateMatch = restOfLine.match(/\b\d{2}\/(\d{2})\/(?:19|20)\d{2}\b/);
+            if (dateMatch) {
+              const monthNum = parseInt(dateMatch[1], 10);
+              if (MONTH_TO_ROMAN[monthNum]) romanFromDate = MONTH_TO_ROMAN[monthNum];
+            }
+            return fixSingleDocFormat(rawDoc, romanFromDate, canonicalType);
+          }
+        }
+
+        // Prioritas B: Pencarian langsung berdasarkan pola nomor dokumen
         const lineRegex = new RegExp(
-          `([0-9OQDIL|!]{2,5}\\s*\\/\\s*[0-9OQDIL|!]{5}\\s*\\/\\s*${docTypeRegex}\\s*\\/\\s*[IVXLCDM0-9L|!]+\\s*\\/\\s*20[0-9OQDIL|!]{2})([^\\n]*)`,
+          `([0-9OQDIL|!SB]{1,6}\\s*\\/\\s*[0-9OQDIL|!SB]{2,6}\\s*\\/\\s*${docTypeRegex}\\s*\\/\\s*[IVXLCDM0-9L|!]+\\s*\\/\\s*(?:19|20)[0-9OQDIL|!]{2})([^\\n]*)`,
           'i'
         );
         const m = normalized.match(lineRegex);
@@ -870,7 +903,7 @@
         const restOfLine = m[2] || '';
 
         let romanFromDate = globalRomanMonth;
-        const dateMatch = restOfLine.match(/\b\d{2}\/(\d{2})\/20\d{2}\b/);
+        const dateMatch = restOfLine.match(/\b\d{2}\/(\d{2})\/(?:19|20)\d{2}\b/);
         if (dateMatch) {
           const monthNum = parseInt(dateMatch[1], 10);
           if (MONTH_TO_ROMAN[monthNum]) {
@@ -878,17 +911,18 @@
           }
         }
 
-        return fixSingleDocFormat(rawDoc, romanFromDate);
+        return fixSingleDocFormat(rawDoc, romanFromDate, canonicalType);
       }
 
       return {
         idpel,
-        dupr: findDocNumber('DUPR'),
-        bapr: findDocNumber('BAPR'),
-        dpr: findDocNumber('DPR'),
-        duppr: findDocNumber('DUPPR'),
-        suppr: findDocNumber('SUPPR(?:-[A-Z0-9]+)?'),
-        engineUsed: 'OCR Lokal + Auto-Fix Romawi'
+        dupr: findDocNumber('[DO0]UPR', 'DUPR'),
+        bapr: findDocNumber('[B8]APR', 'BAPR'),
+        dpr: findDocNumber('[DO0]PR', 'DPR'),
+        duppr: findDocNumber('[DO0]UPPR', 'DUPPR', 'ENTRI\\s+DUPPR'),
+        // Untuk SUPPR: Ambil dari baris 8 (TERBIT SUPPR-UP yang bisa berisi SUPPR-UP atau SUPPR-AP, bukan SUPPR-UPI)
+        suppr: findDocNumber('[S5]UPPR-(?:UP|AP)(?!I)', null, 'TERBIT\\s+SUPPR-UP(?!I)'),
+        engineUsed: 'OCR Lokal (Multi-Digit 410/54410)'
       };
     }
 
@@ -911,10 +945,10 @@
           const aiData = await response.json();
           return {
             idpel: aiData.idpel || '',
-            dupr: fixSingleDocFormat(aiData.dupr),
-            bapr: fixSingleDocFormat(aiData.bapr),
-            dpr: fixSingleDocFormat(aiData.dpr),
-            duppr: fixSingleDocFormat(aiData.duppr),
+            dupr: fixSingleDocFormat(aiData.dupr, null, 'DUPR'),
+            bapr: fixSingleDocFormat(aiData.bapr, null, 'BAPR'),
+            dpr: fixSingleDocFormat(aiData.dpr, null, 'DPR'),
+            duppr: fixSingleDocFormat(aiData.duppr, null, 'DUPPR'),
             suppr: fixSingleDocFormat(aiData.suppr),
             engineUsed: 'Gemini AI'
           };
@@ -984,7 +1018,6 @@
             const rowIdpel = excelRows[targetIdx]['IDPEL'];
             const rowName = excelRows[targetIdx]['NAMA'] || '';
 
-            // Jika Google Spreadsheet terhubung, langsung kirim secara Real-Time!
             let syncMsg = '';
             if (getGasUrl()) {
               try {
