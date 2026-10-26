@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Auto-Fill Monitoring PRR Jatinegara - Excel Automation</title>
+  <title>Auto-Fill Monitoring PRR Jatinegara - Live Google Spreadsheet</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- SheetJS (xlsx) untuk baca & tulis file Excel asli -->
@@ -38,17 +38,26 @@
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <h1 class="font-bold text-base sm:text-lg tracking-tight">PRR Auto-Fill Excel</h1>
+            <h1 class="font-bold text-base sm:text-lg tracking-tight">PRR Auto-Fill Spreadsheet</h1>
             <span class="text-[11px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30">
               UP3 Jatinegara
             </span>
+            <span id="sheetSyncStatusBadge" class="hidden text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 items-center gap-1">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              Live Spreadsheet Aktif
+            </span>
           </div>
-          <p class="text-xs text-slate-400">Ekstraksi Otomatis Screenshot Monitoring Status PRR &rarr; Kolom Excel (DUPR, BAPR, DPR, DUPPR, SUPPR)</p>
+          <p class="text-xs text-slate-400">Paste Screenshot Monitoring PRR &rarr; Langsung Terisi di Google Spreadsheet &amp; Excel</p>
         </div>
       </div>
 
       <!-- Action Buttons -->
-      <div class="flex flex-wrap items-center gap-2.5">
+      <div class="flex flex-wrap items-center gap-2">
+        <button onclick="openSheetModal()" class="inline-flex items-center gap-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 px-3 py-2 rounded-lg text-xs font-semibold transition">
+          <i data-lucide="sheet" class="w-4 h-4 text-emerald-400"></i>
+          <span id="sheetBtnText">Hubungkan Google Spreadsheet</span>
+        </button>
+
         <button onclick="fixAllExistingRowsRoman()" title="Perbaiki semua 1I / 11 menjadi II di tabel" class="inline-flex items-center gap-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/30 px-3 py-2 rounded-lg text-xs font-medium transition">
           <i data-lucide="wand-2" class="w-4 h-4"></i>
           <span>Auto-Fix Romawi (1I &rarr; II)</span>
@@ -56,18 +65,18 @@
 
         <button onclick="openSettingsModal()" class="inline-flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-lg text-xs font-medium transition">
           <i data-lucide="settings" class="w-4 h-4 text-slate-400"></i>
-          <span id="engineBadge">Mode: Auto (AI + OCR)</span>
+          <span>Pengaturan AI</span>
         </button>
 
-        <label class="cursor-pointer inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 px-3.5 py-2 rounded-lg text-xs font-medium transition shadow-sm">
+        <label class="cursor-pointer inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 px-3 py-2 rounded-lg text-xs font-medium transition shadow-sm">
           <i data-lucide="folder-open" class="w-4 h-4 text-amber-400"></i>
-          <span>Buka File Excel (.xlsx)</span>
+          <span>Buka Excel (.xlsx)</span>
           <input id="excelFileInput" type="file" accept=".xlsx,.xls,.csv" class="hidden" />
         </label>
 
-        <button id="downloadExcelBtn" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-semibold transition shadow-sm">
+        <button id="downloadExcelBtn" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-lg text-xs font-semibold transition shadow-sm">
           <i data-lucide="download" class="w-4 h-4"></i>
-          <span>Download Excel (.xlsx)</span>
+          <span>Download (.xlsx)</span>
         </button>
       </div>
     </div>
@@ -129,7 +138,7 @@
             Klik untuk pilih foto, Drag & Drop, atau tekan <kbd class="px-1.5 py-0.5 text-xs bg-white border border-slate-300 rounded shadow-sm font-mono">Ctrl+V</kbd>
           </p>
           <p class="text-xs text-slate-500">
-            Otomatis mendeteksi <b>ID Pelanggan</b> atau mengisi baris IDPEL yang sedang Anda pilih di tabel.
+            Otomatis mendeteksi <b>ID Pelanggan</b> dan langsung menulis hasilnya ke <b>Google Spreadsheet</b> secara <i>real-time</i>.
           </p>
         </div>
 
@@ -142,6 +151,30 @@
             </span>
             <button id="clearTargetBtn" class="hidden text-rose-600 hover:underline text-[11px]">Reset</button>
           </div>
+        </div>
+      </div>
+
+      <!-- Google Spreadsheet Quick Actions Bar -->
+      <div id="liveSheetQuickCard" class="hidden bg-emerald-950 text-emerald-100 rounded-xl p-4 text-xs space-y-2.5 border border-emerald-800">
+        <div class="flex items-center justify-between">
+          <span class="font-semibold text-white flex items-center gap-1.5">
+            <i data-lucide="cloud" class="w-4 h-4 text-emerald-400"></i>
+            Sinkronisasi Google Spreadsheet
+          </span>
+          <a id="openGoogleSheetLink" href="#" target="_blank" class="hidden text-[11px] text-emerald-300 hover:underline flex items-center gap-1">
+            <span>Buka Sheet</span>
+            <i data-lucide="external-link" class="w-3 h-3"></i>
+          </a>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="pullFromGoogleSheet()" class="bg-emerald-800/80 hover:bg-emerald-700 text-white py-2 px-3 rounded-lg font-medium flex items-center justify-center gap-1.5 transition">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            <span>Muat dari Sheet</span>
+          </button>
+          <button onclick="pushAllFilledToGoogleSheet()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 py-2 px-3 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition">
+            <i data-lucide="upload-cloud" class="w-3.5 h-3.5"></i>
+            <span>Kirim Semua Terisi</span>
+          </button>
         </div>
       </div>
 
@@ -183,7 +216,7 @@
         <div class="flex items-center justify-between mb-3">
           <h3 class="font-semibold text-sm text-slate-800 flex items-center gap-2">
             <i data-lucide="activity" class="w-4 h-4 text-teal-600"></i>
-            <span>Riwayat Ekstraksi Foto</span>
+            <span>Riwayat Ekstraksi &amp; Sync</span>
           </h3>
           <button id="clearLogsBtn" class="text-[11px] text-slate-400 hover:text-slate-600">Bersihkan</button>
         </div>
@@ -204,9 +237,9 @@
         <div class="flex flex-wrap items-center gap-3">
           <div>
             <div class="flex items-center gap-2">
-              <h2 class="font-bold text-sm text-slate-800" id="activeFileName">Penghapusan Prr Dekom JTN.xlsx (Data Sampel)</h2>
+              <h2 class="font-bold text-sm text-slate-800" id="activeFileName">Penghapusan Prr Dekom JTN.xlsx</h2>
               <span id="autoSaveIndicator" class="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-medium">
-                Tersimpan di Browser
+                Tersimpan Otomatis
               </span>
             </div>
             <p class="text-xs text-slate-500 mt-0.5" id="statsSummaryText">Total: 0 baris | Terisi: 0 | Belum Terisi: 0</p>
@@ -276,6 +309,60 @@
 
   </main>
 
+  <!-- Modal Hubungkan Google Spreadsheet (Live Sync) -->
+  <div id="sheetModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-200 space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-base text-slate-900 flex items-center gap-2">
+          <i data-lucide="sheet" class="w-5 h-5 text-emerald-600"></i>
+          Hubungkan ke Google Spreadsheet Online
+        </h3>
+        <button onclick="closeSheetModal()" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs text-slate-600">
+        <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-1">
+          <div class="font-semibold">Cara Kerja Live Sync:</div>
+          <p>Setiap kali Anda Paste foto (<kbd class="px-1 py-0.5 bg-white border rounded">Ctrl+V</kbd>) atau mengubah isi tabel, aplikasi otomatis mengirim perubahan ke Google Spreadsheet Anda detik itu juga.</p>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">1. URL Web App Google Apps Script (Wajib):</label>
+          <input
+            id="gasWebAppUrlInput"
+            type="url"
+            placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+          <p class="text-[11px] text-slate-400 mt-1">
+            Didapat dari menu <b>Ekstensi &rarr; Apps Script &rarr; Terapkan (Deploy) &rarr; Aplikasi Web</b> di Google Spreadsheet Anda.
+          </p>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">2. Link Google Spreadsheet (Opsional, untuk tombol pintasan):</label>
+          <input
+            id="googleSheetViewUrlInput"
+            type="url"
+            placeholder="https://docs.google.com/spreadsheets/d/..."
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-end gap-2 pt-3 border-t border-slate-100">
+        <button onclick="disconnectGoogleSheet()" class="mr-auto text-xs text-rose-600 hover:underline">Putuskan Koneksi</button>
+        <button onclick="closeSheetModal()" class="px-3.5 py-2 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100">Tutup</button>
+        <button onclick="saveSheetSettings(true)" class="px-4 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5">
+          <i data-lucide="check" class="w-4 h-4"></i>
+          <span>Simpan &amp; Muat Data Spreadsheet</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Settings Modal (API Key & Mode Ekstraksi) -->
   <div id="settingsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 space-y-4">
@@ -290,45 +377,42 @@
       </div>
 
       <div class="space-y-3 text-xs text-slate-600">
-        <p>
-          Aplikasi ini memiliki <b>Dual-Engine</b>:
-        </p>
+        <p>Aplikasi ini memiliki <b>Dual-Engine</b>:</p>
         <ul class="list-disc pl-5 space-y-1">
-          <li><b>Gemini Vision AI:</b> Akurasi tertinggi, tahan foto miring/kamera HP. Menggunakan variabel <code>GEMINI_API_KEY</code> di Vercel atau API Key di bawah ini.</li>
-          <li><b>Smart OCR Lokal (Tesseract.js):</b> 100% gratis tanpa API Key, langsung membaca pola <code>/DUPR/</code>, <code>/BAPR/</code>, <code>/DPR/</code>, <code>/DUPPR/</code>, dan <code>/SUPPR-UP/</code> beserta validasi kolom <code>Tgl Proses</code>.</li>
+          <li><b>Gemini Vision AI:</b> Menggunakan variabel <code>GEMINI_API_KEY</code> di Vercel atau API Key di bawah ini.</li>
+          <li><b>Smart OCR Lokal (Tesseract.js):</b> 100% gratis tanpa API Key, dilengkapi koreksi otomatis angka Romawi (<code>1I</code> &rarr; <code>II</code>).</li>
         </ul>
 
         <div class="pt-2">
-          <label class="block font-semibold text-slate-700 mb-1">Gemini API Key (Opsional jika belum diset di Vercel):</label>
+          <label class="block font-semibold text-slate-700 mb-1">Gemini API Key (Opsional):</label>
           <input
             id="customApiKeyInput"
             type="password"
             placeholder="AIzaSy..."
             class="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-xs focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
-          <p class="text-[11px] text-slate-400 mt-1">
-            Disimpan aman hanya di browser perangkat Anda (<code>localStorage</code>). Kosongkan jika sudah mengatur di Vercel atau ingin memakai OCR Lokal.
-          </p>
         </div>
       </div>
 
       <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-        <button onclick="resetStoredData()" class="mr-auto text-xs text-rose-600 hover:underline">Reset Data Tersimpan</button>
+        <button onclick="resetStoredData()" class="mr-auto text-xs text-rose-600 hover:underline">Reset Data Lokal</button>
         <button onclick="closeSettingsModal()" class="px-3.5 py-2 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100">Batal</button>
-        <button onclick="saveSettings()" class="px-4 py-2 rounded-lg text-xs font-semibold bg-teal-600 hover:bg-teal-700 text-white">Simpan Pengaturan</button>
+        <button onclick="saveSettings()" class="px-4 py-2 rounded-lg text-xs font-semibold bg-teal-600 hover:bg-teal-700 text-white">Simpan</button>
       </div>
     </div>
   </div>
 
   <script>
     // =========================================================================
-    // 1. STATE & DATA DEFAULT (SAMPEL DARI PENGHAPUSAN PRR DEKOM JTN.XLSX)
+    // 1. STATE & KONFIGURASI PENYIMPANAN
     // =========================================================================
     const REQUIRED_DOC_COLS = ['NO dupr', 'NO BAPR', 'NO DPR', 'NO DUPPR', 'NO SUPPR'];
     const STORAGE_KEY_DATA = 'prr_jtn_excel_rows_v1';
     const STORAGE_KEY_COLS = 'prr_jtn_excel_cols_v1';
     const STORAGE_KEY_FILENAME = 'prr_jtn_excel_filename_v1';
     const STORAGE_KEY_APIKEY = 'prr_jtn_custom_gemini_key';
+    const STORAGE_KEY_GAS_URL = 'prr_jtn_gas_webapp_url';
+    const STORAGE_KEY_SHEET_LINK = 'prr_jtn_sheet_view_url';
 
     const MONTH_TO_ROMAN = {
       1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V', 6: 'VI',
@@ -361,7 +445,7 @@
     let lastUpdatedRowIdx = null;
 
     // =========================================================================
-    // 2. FUNGSI KOREKSI OTOMATIS BULAN ROMAWI (1I / 11 -> II)
+    // 2. KOREKSI OTOMATIS BULAN ROMAWI (1I / 11 -> II)
     // =========================================================================
     function fixSingleDocFormat(rawDoc, fallbackRomanMonth = null) {
       if (!rawDoc) return 'kosong';
@@ -373,28 +457,23 @@
       const parts = cleaned.split('/');
       if (parts.length < 5) return cleaned;
 
-      // Segmen 1: Nomor Urut (002 / 0002) -> pastikan semua angka
       let seq = parts[0]
         .replace(/[OQD]/g, '0')
         .replace(/[IL|!]/g, '1')
         .replace(/S/g, '5')
         .replace(/B/g, '8');
 
-      // Segmen 2: Kode Unit (54410) -> pastikan semua angka
       let unit = parts[1]
         .replace(/[OQD]/g, '0')
         .replace(/[IL|!]/g, '1')
         .replace(/S/g, '5');
 
-      // Segmen 3: Jenis Dokumen (DUPR, BAPR, DPR, DUPPR, SUPPR-UP)
       let docType = parts[2];
 
-      // Segmen 4: Bulan Romawi (I s/d XII) -> ubah semua angka 1 / l / | menjadi I
       let roman = parts[3]
         .replace(/[1L|!]/g, 'I')
         .replace(/0/g, 'O');
 
-      // Jika ada tanggal proses (contoh 20/02/2019 -> bulan 02 = II), gunakan untuk validasi silang
       if (fallbackRomanMonth && VALID_ROMANS.includes(fallbackRomanMonth)) {
         if (!VALID_ROMANS.includes(roman)) {
           roman = fallbackRomanMonth;
@@ -409,7 +488,6 @@
         }
       }
 
-      // Segmen 5: Tahun (2015 - 2026)
       let year = parts[4]
         .replace(/[OQD]/g, '0')
         .replace(/[IL|!]/g, '1');
@@ -417,12 +495,10 @@
       return `${seq}/${unit}/${docType}/${roman}/${year}`;
     }
 
-    // Perbaiki seluruh baris yang sudah tersimpan di tabel (termasuk menyamakan bulan Romawi jika SUPPR-UP terbaca I padahal lainnya II)
     window.fixAllExistingRowsRoman = function (silent = false) {
       let fixedCount = 0;
 
       excelRows.forEach(row => {
-        // Langkah 1: Konversi semua 1I / 11 menjadi II
         REQUIRED_DOC_COLS.forEach(col => {
           const oldVal = String(row[col] || '').trim();
           if (oldVal && oldVal.toLowerCase() !== 'kosong') {
@@ -434,7 +510,6 @@
           }
         });
 
-        // Langkah 2: Cek mayoritas bulan Romawi pada 1 baris yang sama (jika 4 dokumen bulan II tapi 1 dokumen terbaca I di tahun yang sama)
         const romansInRow = {};
         REQUIRED_DOC_COLS.forEach(col => {
           const val = String(row[col] || '').trim();
@@ -473,12 +548,138 @@
       saveToStorage();
       renderAll();
       if (!silent) {
-        addLogItem('success', `Auto-Fix selesai: ${fixedCount} penulisan nomor dokumen (1I / 11 -> II) berhasil diperbaiki.`);
+        addLogItem('success', `Auto-Fix selesai: ${fixedCount} nomor dokumen (1I / 11 -> II) berhasil diperbaiki.`);
       }
     };
 
     // =========================================================================
-    // 3. INISIALISASI & LOCALSTORAGE PERSISTENCE
+    // 3. GOOGLE SPREADSHEET LIVE SYNC ENGINE
+    // =========================================================================
+    function getGasUrl() {
+      return (localStorage.getItem(STORAGE_KEY_GAS_URL) || '').trim();
+    }
+
+    function updateSheetUiIndicators() {
+      const gasUrl = getGasUrl();
+      const sheetViewUrl = (localStorage.getItem(STORAGE_KEY_SHEET_LINK) || '').trim();
+      const badge = document.getElementById('sheetSyncStatusBadge');
+      const quickCard = document.getElementById('liveSheetQuickCard');
+      const btnText = document.getElementById('sheetBtnText');
+      const openLink = document.getElementById('openGoogleSheetLink');
+
+      if (gasUrl) {
+        badge.classList.remove('hidden');
+        badge.classList.add('inline-flex');
+        quickCard.classList.remove('hidden');
+        btnText.textContent = 'Spreadsheet Terhubung';
+        if (sheetViewUrl) {
+          openLink.href = sheetViewUrl;
+          openLink.classList.remove('hidden');
+        } else {
+          openLink.classList.add('hidden');
+        }
+      } else {
+        badge.classList.add('hidden');
+        badge.classList.remove('inline-flex');
+        quickCard.classList.add('hidden');
+        btnText.textContent = 'Hubungkan Google Spreadsheet';
+      }
+    }
+
+    // Ambil seluruh baris langsung dari Google Spreadsheet
+    window.pullFromGoogleSheet = async function () {
+      const gasUrl = getGasUrl();
+      if (!gasUrl) return openSheetModal();
+
+      const logId = addLogItem('loading', 'Mengambil data terbaru dari Google Spreadsheet...');
+      try {
+        const res = await fetch(gasUrl, { method: 'GET' });
+        const data = await res.json();
+
+        if (data.status !== 'success') {
+          throw new Error(data.message || 'Gagal memuat data dari Google Spreadsheet');
+        }
+
+        const headers = data.headers || [];
+        REQUIRED_DOC_COLS.forEach(c => {
+          if (!headers.includes(c)) headers.push(c);
+        });
+
+        excelColumns = headers;
+        excelRows = data.rows || [];
+        currentFileName = (data.sheetName || 'Google Spreadsheet') + ' (Live)';
+        fixAllExistingRowsRoman(true);
+        saveToStorage();
+        renderAll();
+        updateLogItem(logId, 'success', `Berhasil sinkronisasi ${excelRows.length} baris dari Google Spreadsheet!`);
+      } catch (err) {
+        updateLogItem(logId, 'error', `Gagal memuat dari Google Spreadsheet: ${err.message}`);
+      }
+    };
+
+    // Kirim 1 baris yang baru terisi langsung ke Google Spreadsheet (Real-Time)
+    async function syncSingleRowToGoogleSheet(rowObj) {
+      const gasUrl = getGasUrl();
+      if (!gasUrl || !rowObj || !rowObj['IDPEL']) return false;
+
+      const values = {};
+      REQUIRED_DOC_COLS.forEach(col => {
+        values[col] = rowObj[col] || '';
+      });
+
+      const response = await fetch(gasUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          idpel: String(rowObj['IDPEL']).trim(),
+          values
+        })
+      });
+
+      const result = await response.json();
+      if (result.status !== 'success') {
+        throw new Error(result.message || 'Gagal menulis ke Spreadsheet');
+      }
+      return true;
+    }
+
+    // Kirim semua baris yang sudah terisi di browser sekaligus ke Google Spreadsheet
+    window.pushAllFilledToGoogleSheet = async function () {
+      const gasUrl = getGasUrl();
+      if (!gasUrl) return openSheetModal();
+
+      const filledRows = excelRows.filter(isRowFilled);
+      if (filledRows.length === 0) {
+        return alert('Belum ada baris yang terisi untuk dikirim ke Google Spreadsheet.');
+      }
+
+      const logId = addLogItem('loading', `Mengirim ${filledRows.length} baris terisi ke Google Spreadsheet...`);
+      try {
+        const items = filledRows.map(r => {
+          const values = {};
+          REQUIRED_DOC_COLS.forEach(c => (values[c] = r[c] || ''));
+          return { idpel: String(r['IDPEL']).trim(), values };
+        });
+
+        const response = await fetch(gasUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ items })
+        });
+
+        const result = await response.json();
+        if (result.status !== 'success') {
+          throw new Error(result.message || 'Gagal batch update ke Spreadsheet');
+        }
+
+        updateLogItem(logId, 'success', `Berhasil menyimpan ${result.updatedCount} baris langsung ke Google Spreadsheet!`);
+      } catch (err) {
+        updateLogItem(logId, 'error', `Gagal mengirim ke Google Spreadsheet: ${err.message}`);
+      }
+    };
+
+    // =========================================================================
+    // 4. INISIALISASI & LOCALSTORAGE PERSISTENCE
     // =========================================================================
     function initApp() {
       lucide.createIcons();
@@ -491,7 +692,6 @@
           excelRows = JSON.parse(savedRows);
           excelColumns = JSON.parse(savedCols);
           currentFileName = savedName || 'Penghapusan Prr Dekom JTN.xlsx';
-          // Otomatis bersihkan semua 1I / 11 yang sudah terlanjur tersimpan sebelumnya
           fixAllExistingRowsRoman(true);
         } catch (e) {
           loadDefaultSample();
@@ -501,7 +701,16 @@
       }
 
       document.getElementById('customApiKeyInput').value = localStorage.getItem(STORAGE_KEY_APIKEY) || '';
+      document.getElementById('gasWebAppUrlInput').value = localStorage.getItem(STORAGE_KEY_GAS_URL) || '';
+      document.getElementById('googleSheetViewUrlInput').value = localStorage.getItem(STORAGE_KEY_SHEET_LINK) || '';
+
+      updateSheetUiIndicators();
       renderAll();
+
+      // Jika sudah terhubung ke Google Spreadsheet, otomatis muat data terbaru
+      if (getGasUrl()) {
+        pullFromGoogleSheet();
+      }
     }
 
     function loadDefaultSample() {
@@ -522,7 +731,7 @@
     }
 
     function resetStoredData() {
-      if (!confirm('Reset data di browser kembali ke sampel awal?')) return;
+      if (!confirm('Reset data lokal di browser kembali ke sampel awal?')) return;
       localStorage.removeItem(STORAGE_KEY_DATA);
       localStorage.removeItem(STORAGE_KEY_COLS);
       localStorage.removeItem(STORAGE_KEY_FILENAME);
@@ -532,7 +741,7 @@
     }
 
     // =========================================================================
-    // 4. BACA & DOWNLOAD FILE EXCEL (.XLSX)
+    // 5. BACA & DOWNLOAD FILE EXCEL (.XLSX)
     // =========================================================================
     document.getElementById('excelFileInput').addEventListener('change', function (e) {
       const file = e.target.files[0];
@@ -594,12 +803,12 @@
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
 
-      const outName = currentFileName.replace(/\.xlsx$/i, '') + '_TERISI.xlsx';
+      const outName = currentFileName.replace(/\s*\(Live\)$/i, '').replace(/\.xlsx$/i, '') + '_TERISI.xlsx';
       XLSX.writeFile(workbook, outName);
     });
 
     // =========================================================================
-    // 5. DUAL-ENGINE PHOTO EXTRACTION + IMAGE UPSCALING + VALIDASI TGL PROSES
+    // 6. DUAL-ENGINE PHOTO EXTRACTION + IMAGE UPSCALING + VALIDASI TGL PROSES
     // =========================================================================
     function fileToBase64(file) {
       return new Promise((resolve, reject) => {
@@ -614,7 +823,6 @@
       });
     }
 
-    // Perbesar gambar 2x dengan kontras tinggi agar huruf Romawi II dan 0002 terbaca tajam
     function upscaleImageForOCR(dataUrl) {
       return new Promise(resolve => {
         const img = new Image();
@@ -635,17 +843,14 @@
       });
     }
 
-    // Engine 2: Smart Local OCR + Auto-Fix Romawi + Cross-Check Tgl Proses
     async function extractWithLocalOCR(dataUrl) {
       const enhancedDataUrl = await upscaleImageForOCR(dataUrl);
       const { data: { text } } = await Tesseract.recognize(enhancedDataUrl, 'eng');
       const normalized = text.replace(/\r\n/g, '\n');
 
-      // 1. Cari ID Pelanggan (12 digit angka)
       const idpelMatch = normalized.match(/\b(54\d{10}|\d{12})\b/);
       const idpel = idpelMatch ? idpelMatch[1] : '';
 
-      // Cari bulan dominan dari seluruh kolom Tgl Proses (DD/MM/YYYY) di foto
       let globalRomanMonth = null;
       const allDates = [...normalized.matchAll(/\b\d{2}\/(\d{2})\/20\d{2}\b/g)];
       if (allDates.length > 0) {
@@ -653,7 +858,6 @@
         if (MONTH_TO_ROMAN[mNum]) globalRomanMonth = MONTH_TO_ROMAN[mNum];
       }
 
-      // 2. Cari nilai nomor dokumen sekaligus membaca Tgl Proses di baris yang sama
       function findDocNumber(docTypeRegex) {
         const lineRegex = new RegExp(
           `([0-9OQDIL|!]{2,5}\\s*\\/\\s*[0-9OQDIL|!]{5}\\s*\\/\\s*${docTypeRegex}\\s*\\/\\s*[IVXLCDM0-9L|!]+\\s*\\/\\s*20[0-9OQDIL|!]{2})([^\\n]*)`,
@@ -688,7 +892,6 @@
       };
     }
 
-    // Engine 1: Serverless Vercel /api/extract (Gemini 2.5 Flash) dengan fallback otomatis ke OCR Lokal
     async function extractDataFromPhoto(file) {
       const { base64Clean, dataUrl, mimeType } = await fileToBase64(file);
       const customApiKey = localStorage.getItem(STORAGE_KEY_APIKEY) || '';
@@ -761,7 +964,7 @@
 
           if (targetIdx === -1 && cleanIdpel) {
             const newRow = {};
-            excelColumns.forEach(c => newRow[c] = '');
+            excelColumns.forEach(c => (newRow[c] = ''));
             newRow['IDPEL'] = cleanIdpel;
             newRow['NAMA'] = '(IDPEL Baru dari Foto)';
             Object.assign(newRow, mapped);
@@ -780,10 +983,22 @@
 
             const rowIdpel = excelRows[targetIdx]['IDPEL'];
             const rowName = excelRows[targetIdx]['NAMA'] || '';
+
+            // Jika Google Spreadsheet terhubung, langsung kirim secara Real-Time!
+            let syncMsg = '';
+            if (getGasUrl()) {
+              try {
+                await syncSingleRowToGoogleSheet(excelRows[targetIdx]);
+                syncMsg = ' + Tersimpan di Google Spreadsheet!';
+              } catch (syncErr) {
+                syncMsg = ` (Gagal sync Sheet: ${syncErr.message})`;
+              }
+            }
+
             updateLogItem(
               logId,
               'success',
-              `[${extracted.engineUsed}] IDPEL ${rowIdpel} (${rowName}) berhasil diisi!`,
+              `[${extracted.engineUsed}] IDPEL ${rowIdpel} (${rowName}) terisi${syncMsg}`,
               excelRows[targetIdx]
             );
           } else {
@@ -800,7 +1015,6 @@
       }
     }
 
-    // Event Listeners untuk Upload & Paste Screenshot (Ctrl+V)
     const dropzone = document.getElementById('photoDropzone');
     const photoInput = document.getElementById('photoFileInput');
 
@@ -840,7 +1054,7 @@
     });
 
     // =========================================================================
-    // 6. RENDER TABEL, ANTREAN IDPEL, DAN LOG
+    // 7. RENDER TABEL, ANTREAN IDPEL, DAN LOG
     // =========================================================================
     function isRowFilled(row) {
       return REQUIRED_DOC_COLS.some(col => {
@@ -972,11 +1186,20 @@
       lucide.createIcons();
     }
 
-    window.updateCellValue = function (rowIndex, colName, newVal) {
+    window.updateCellValue = async function (rowIndex, colName, newVal) {
       if (!excelRows[rowIndex]) return;
-      excelRows[rowIndex][colName] = fixSingleDocFormat(newVal.trim());
+      const trimmed = newVal.trim();
+      excelRows[rowIndex][colName] = trimmed ? fixSingleDocFormat(trimmed) : '';
       saveToStorage();
       renderAll();
+
+      if (getGasUrl()) {
+        try {
+          await syncSingleRowToGoogleSheet(excelRows[rowIndex]);
+        } catch (err) {
+          console.error('Gagal sync edit manual ke Sheet:', err);
+        }
+      }
     };
 
     window.selectRowAsTarget = function (rowIndex) {
@@ -1055,7 +1278,7 @@
     });
 
     // =========================================================================
-    // 7. LOG RIWAYAT & MODAL PENGATURAN
+    // 8. LOG RIWAYAT & MODAL PENGATURAN
     // =========================================================================
     function addLogItem(status, message, details = null) {
       const container = document.getElementById('extractionLogs');
@@ -1108,6 +1331,50 @@
         </div>
       `;
     });
+
+    window.openSheetModal = function () {
+      const modal = document.getElementById('sheetModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.closeSheetModal = function () {
+      const modal = document.getElementById('sheetModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    window.saveSheetSettings = function (shouldPull = false) {
+      const gasUrl = document.getElementById('gasWebAppUrlInput').value.trim();
+      const sheetUrl = document.getElementById('googleSheetViewUrlInput').value.trim();
+
+      if (gasUrl) {
+        localStorage.setItem(STORAGE_KEY_GAS_URL, gasUrl);
+      } else {
+        localStorage.removeItem(STORAGE_KEY_GAS_URL);
+      }
+
+      if (sheetUrl) {
+        localStorage.setItem(STORAGE_KEY_SHEET_LINK, sheetUrl);
+      } else {
+        localStorage.removeItem(STORAGE_KEY_SHEET_LINK);
+      }
+
+      updateSheetUiIndicators();
+      closeSheetModal();
+      if (shouldPull && gasUrl) {
+        pullFromGoogleSheet();
+      }
+    };
+
+    window.disconnectGoogleSheet = function () {
+      localStorage.removeItem(STORAGE_KEY_GAS_URL);
+      localStorage.removeItem(STORAGE_KEY_SHEET_LINK);
+      document.getElementById('gasWebAppUrlInput').value = '';
+      document.getElementById('googleSheetViewUrlInput').value = '';
+      updateSheetUiIndicators();
+      closeSheetModal();
+    };
 
     window.openSettingsModal = function () {
       const modal = document.getElementById('settingsModal');
