@@ -49,6 +49,11 @@
 
       <!-- Action Buttons -->
       <div class="flex flex-wrap items-center gap-2.5">
+        <button onclick="fixAllExistingRowsRoman()" title="Perbaiki semua 1I / 11 menjadi II di tabel" class="inline-flex items-center gap-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/30 px-3 py-2 rounded-lg text-xs font-medium transition">
+          <i data-lucide="wand-2" class="w-4 h-4"></i>
+          <span>Auto-Fix Romawi (1I &rarr; II)</span>
+        </button>
+
         <button onclick="openSettingsModal()" class="inline-flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-lg text-xs font-medium transition">
           <i data-lucide="settings" class="w-4 h-4 text-slate-400"></i>
           <span id="engineBadge">Mode: Auto (AI + OCR)</span>
@@ -144,7 +149,7 @@
       <div class="bg-slate-900 text-slate-200 rounded-xl p-4 text-xs space-y-2">
         <div class="font-semibold text-white flex items-center justify-between">
           <span class="flex items-center gap-1.5">
-            <i data-lucide="Cpu" class="w-4 h-4 text-amber-400"></i>
+            <i data-lucide="cpu" class="w-4 h-4 text-amber-400"></i>
             Aturan Pemetaan Kolom Otomatis
           </span>
           <span class="text-[10px] text-emerald-400 font-mono">Kosong = "kosong"</span>
@@ -290,7 +295,7 @@
         </p>
         <ul class="list-disc pl-5 space-y-1">
           <li><b>Gemini Vision AI:</b> Akurasi tertinggi, tahan foto miring/kamera HP. Menggunakan variabel <code>GEMINI_API_KEY</code> di Vercel atau API Key di bawah ini.</li>
-          <li><b>Smart OCR Lokal (Tesseract.js):</b> 100% gratis tanpa API Key, langsung membaca pola <code>/DUPR/</code>, <code>/BAPR/</code>, <code>/DPR/</code>, <code>/DUPPR/</code>, dan <code>/SUPPR-UP/</code> di browser Anda.</li>
+          <li><b>Smart OCR Lokal (Tesseract.js):</b> 100% gratis tanpa API Key, langsung membaca pola <code>/DUPR/</code>, <code>/BAPR/</code>, <code>/DPR/</code>, <code>/DUPPR/</code>, dan <code>/SUPPR-UP/</code> beserta validasi kolom <code>Tgl Proses</code>.</li>
         </ul>
 
         <div class="pt-2">
@@ -325,6 +330,13 @@
     const STORAGE_KEY_FILENAME = 'prr_jtn_excel_filename_v1';
     const STORAGE_KEY_APIKEY = 'prr_jtn_custom_gemini_key';
 
+    const MONTH_TO_ROMAN = {
+      1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V', 6: 'VI',
+      7: 'VII', 8: 'VIII', 9: 'IX', 10: 'X', 11: 'XI', 12: 'XII'
+    };
+
+    const VALID_ROMANS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+
     const DEFAULT_COLUMNS = [
       'BULAN_REKAP', 'IDPEL', 'UNITUPI', 'UNITAP', 'UNITUP', 'NAMA', 'ALAMAT', 'RT', 'RW',
       'NO dupr', 'NO BAPR', 'NO DPR', 'NO DUPPR', 'NO SUPPR', 'TARIF', 'DAYA', 'RP_DPP_PRR'
@@ -342,14 +354,131 @@
     let excelRows = [];
     let excelColumns = [];
     let currentFileName = 'Penghapusan Prr Dekom JTN.xlsx';
-    let selectedRowIndex = null; // Jika user memilih baris manual untuk diisi
+    let selectedRowIndex = null;
     let queueSkipOffset = 0;
     let currentPage = 1;
     const pageSize = 50;
     let lastUpdatedRowIdx = null;
 
     // =========================================================================
-    // 2. INISIALISASI & LOCALSTORAGE PERSISTENCE
+    // 2. FUNGSI KOREKSI OTOMATIS BULAN ROMAWI (1I / 11 -> II)
+    // =========================================================================
+    function fixSingleDocFormat(rawDoc, fallbackRomanMonth = null) {
+      if (!rawDoc) return 'kosong';
+      const cleaned = String(rawDoc).trim().replace(/\s+/g, '').toUpperCase();
+      if (!cleaned || cleaned === '-' || cleaned === 'KOSONG' || cleaned === 'NULL') {
+        return 'kosong';
+      }
+
+      const parts = cleaned.split('/');
+      if (parts.length < 5) return cleaned;
+
+      // Segmen 1: Nomor Urut (002 / 0002) -> pastikan semua angka
+      let seq = parts[0]
+        .replace(/[OQD]/g, '0')
+        .replace(/[IL|!]/g, '1')
+        .replace(/S/g, '5')
+        .replace(/B/g, '8');
+
+      // Segmen 2: Kode Unit (54410) -> pastikan semua angka
+      let unit = parts[1]
+        .replace(/[OQD]/g, '0')
+        .replace(/[IL|!]/g, '1')
+        .replace(/S/g, '5');
+
+      // Segmen 3: Jenis Dokumen (DUPR, BAPR, DPR, DUPPR, SUPPR-UP)
+      let docType = parts[2];
+
+      // Segmen 4: Bulan Romawi (I s/d XII) -> ubah semua angka 1 / l / | menjadi I
+      let roman = parts[3]
+        .replace(/[1L|!]/g, 'I')
+        .replace(/0/g, 'O');
+
+      // Jika ada tanggal proses (contoh 20/02/2019 -> bulan 02 = II), gunakan untuk validasi silang
+      if (fallbackRomanMonth && VALID_ROMANS.includes(fallbackRomanMonth)) {
+        if (!VALID_ROMANS.includes(roman)) {
+          roman = fallbackRomanMonth;
+        } else if (
+          (fallbackRomanMonth === 'II' && (roman === 'I' || roman === 'III')) ||
+          (fallbackRomanMonth === 'III' && (roman === 'II' || roman === 'I')) ||
+          (fallbackRomanMonth === 'VII' && (roman === 'VI' || roman === 'VIII')) ||
+          (fallbackRomanMonth === 'VIII' && (roman === 'VII' || roman === 'VI')) ||
+          (fallbackRomanMonth === 'XII' && roman === 'XI')
+        ) {
+          roman = fallbackRomanMonth;
+        }
+      }
+
+      // Segmen 5: Tahun (2015 - 2026)
+      let year = parts[4]
+        .replace(/[OQD]/g, '0')
+        .replace(/[IL|!]/g, '1');
+
+      return `${seq}/${unit}/${docType}/${roman}/${year}`;
+    }
+
+    // Perbaiki seluruh baris yang sudah tersimpan di tabel (termasuk menyamakan bulan Romawi jika SUPPR-UP terbaca I padahal lainnya II)
+    window.fixAllExistingRowsRoman = function (silent = false) {
+      let fixedCount = 0;
+
+      excelRows.forEach(row => {
+        // Langkah 1: Konversi semua 1I / 11 menjadi II
+        REQUIRED_DOC_COLS.forEach(col => {
+          const oldVal = String(row[col] || '').trim();
+          if (oldVal && oldVal.toLowerCase() !== 'kosong') {
+            const newVal = fixSingleDocFormat(oldVal);
+            if (newVal !== oldVal) {
+              row[col] = newVal;
+              fixedCount++;
+            }
+          }
+        });
+
+        // Langkah 2: Cek mayoritas bulan Romawi pada 1 baris yang sama (jika 4 dokumen bulan II tapi 1 dokumen terbaca I di tahun yang sama)
+        const romansInRow = {};
+        REQUIRED_DOC_COLS.forEach(col => {
+          const val = String(row[col] || '').trim();
+          const parts = val.split('/');
+          if (parts.length >= 5 && VALID_ROMANS.includes(parts[3])) {
+            const key = `${parts[3]}_${parts[4]}`;
+            romansInRow[key] = (romansInRow[key] || 0) + 1;
+          }
+        });
+
+        let dominantRoman = null;
+        let dominantYear = null;
+        Object.entries(romansInRow).forEach(([key, count]) => {
+          if (count >= 3) {
+            const [r, y] = key.split('_');
+            dominantRoman = r;
+            dominantYear = y;
+          }
+        });
+
+        if (dominantRoman) {
+          REQUIRED_DOC_COLS.forEach(col => {
+            const val = String(row[col] || '').trim();
+            const parts = val.split('/');
+            if (parts.length >= 5 && parts[4] === dominantYear && parts[3] !== dominantRoman) {
+              const corrected = fixSingleDocFormat(val, dominantRoman);
+              if (corrected !== val) {
+                row[col] = corrected;
+                fixedCount++;
+              }
+            }
+          });
+        }
+      });
+
+      saveToStorage();
+      renderAll();
+      if (!silent) {
+        addLogItem('success', `Auto-Fix selesai: ${fixedCount} penulisan nomor dokumen (1I / 11 -> II) berhasil diperbaiki.`);
+      }
+    };
+
+    // =========================================================================
+    // 3. INISIALISASI & LOCALSTORAGE PERSISTENCE
     // =========================================================================
     function initApp() {
       lucide.createIcons();
@@ -362,6 +491,8 @@
           excelRows = JSON.parse(savedRows);
           excelColumns = JSON.parse(savedCols);
           currentFileName = savedName || 'Penghapusan Prr Dekom JTN.xlsx';
+          // Otomatis bersihkan semua 1I / 11 yang sudah terlanjur tersimpan sebelumnya
+          fixAllExistingRowsRoman(true);
         } catch (e) {
           loadDefaultSample();
         }
@@ -401,7 +532,7 @@
     }
 
     // =========================================================================
-    // 3. BACA & DOWNLOAD FILE EXCEL (.XLSX)
+    // 4. BACA & DOWNLOAD FILE EXCEL (.XLSX)
     // =========================================================================
     document.getElementById('excelFileInput').addEventListener('change', function (e) {
       const file = e.target.files[0];
@@ -440,6 +571,7 @@
         currentFileName = file.name;
         currentPage = 1;
         queueSkipOffset = 0;
+        fixAllExistingRowsRoman(true);
         saveToStorage();
         renderAll();
         addLogItem('success', `Berhasil memuat ${parsedRows.length} baris dari ${file.name}`);
@@ -467,7 +599,7 @@
     });
 
     // =========================================================================
-    // 4. DUAL-ENGINE PHOTO EXTRACTION (GEMINI VISION AI + LOCAL OCR REGEX)
+    // 5. DUAL-ENGINE PHOTO EXTRACTION + IMAGE UPSCALING + VALIDASI TGL PROSES
     // =========================================================================
     function fileToBase64(file) {
       return new Promise((resolve, reject) => {
@@ -482,24 +614,67 @@
       });
     }
 
-    // Engine 2: Smart Local OCR + Regex khusus format dokumen PRR PLN
+    // Perbesar gambar 2x dengan kontras tinggi agar huruf Romawi II dan 0002 terbaca tajam
+    function upscaleImageForOCR(dataUrl) {
+      return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const scale = 2;
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+          const ctx = canvas.getContext('2d');
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.filter = 'contrast(1.35) grayscale(1)';
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/png'));
+        };
+        img.onerror = () => resolve(dataUrl);
+        img.src = dataUrl;
+      });
+    }
+
+    // Engine 2: Smart Local OCR + Auto-Fix Romawi + Cross-Check Tgl Proses
     async function extractWithLocalOCR(dataUrl) {
-      const { data: { text } } = await Tesseract.recognize(dataUrl, 'eng');
+      const enhancedDataUrl = await upscaleImageForOCR(dataUrl);
+      const { data: { text } } = await Tesseract.recognize(enhancedDataUrl, 'eng');
       const normalized = text.replace(/\r\n/g, '\n');
 
-      // 1. Cari ID Pelanggan (12 digit angka, umumnya diawali 54410)
+      // 1. Cari ID Pelanggan (12 digit angka)
       const idpelMatch = normalized.match(/\b(54\d{10}|\d{12})\b/);
       const idpel = idpelMatch ? idpelMatch[1] : '';
 
-      // Helper pencari nomor dokumen berdasarkan kode jenis dokumen
+      // Cari bulan dominan dari seluruh kolom Tgl Proses (DD/MM/YYYY) di foto
+      let globalRomanMonth = null;
+      const allDates = [...normalized.matchAll(/\b\d{2}\/(\d{2})\/20\d{2}\b/g)];
+      if (allDates.length > 0) {
+        const mNum = parseInt(allDates[0][1], 10);
+        if (MONTH_TO_ROMAN[mNum]) globalRomanMonth = MONTH_TO_ROMAN[mNum];
+      }
+
+      // 2. Cari nilai nomor dokumen sekaligus membaca Tgl Proses di baris yang sama
       function findDocNumber(docTypeRegex) {
-        const regex = new RegExp(`([0-9OIl]{2,5}\\s*\\/\\s*\\d{5}\\s*\\/\\s*${docTypeRegex}\\s*\\/\\s*[IVXLCDM0-9]+\\s*\\/\\s*20\\d{2})`, 'i');
-        const m = normalized.match(regex);
+        const lineRegex = new RegExp(
+          `([0-9OQDIL|!]{2,5}\\s*\\/\\s*[0-9OQDIL|!]{5}\\s*\\/\\s*${docTypeRegex}\\s*\\/\\s*[IVXLCDM0-9L|!]+\\s*\\/\\s*20[0-9OQDIL|!]{2})([^\\n]*)`,
+          'i'
+        );
+        const m = normalized.match(lineRegex);
         if (!m) return 'kosong';
-        return m[1]
-          .replace(/\s+/g, '')
-          .replace(/^[O]/i, '0')
-          .toUpperCase();
+
+        const rawDoc = m[1];
+        const restOfLine = m[2] || '';
+
+        let romanFromDate = globalRomanMonth;
+        const dateMatch = restOfLine.match(/\b\d{2}\/(\d{2})\/20\d{2}\b/);
+        if (dateMatch) {
+          const monthNum = parseInt(dateMatch[1], 10);
+          if (MONTH_TO_ROMAN[monthNum]) {
+            romanFromDate = MONTH_TO_ROMAN[monthNum];
+          }
+        }
+
+        return fixSingleDocFormat(rawDoc, romanFromDate);
       }
 
       return {
@@ -509,7 +684,7 @@
         dpr: findDocNumber('DPR'),
         duppr: findDocNumber('DUPPR'),
         suppr: findDocNumber('SUPPR(?:-[A-Z0-9]+)?'),
-        engineUsed: 'OCR Lokal'
+        engineUsed: 'OCR Lokal + Auto-Fix Romawi'
       };
     }
 
@@ -531,13 +706,20 @@
 
         if (response.ok) {
           const aiData = await response.json();
-          return { ...aiData, engineUsed: 'Gemini AI' };
+          return {
+            idpel: aiData.idpel || '',
+            dupr: fixSingleDocFormat(aiData.dupr),
+            bapr: fixSingleDocFormat(aiData.bapr),
+            dpr: fixSingleDocFormat(aiData.dpr),
+            duppr: fixSingleDocFormat(aiData.duppr),
+            suppr: fixSingleDocFormat(aiData.suppr),
+            engineUsed: 'Gemini AI'
+          };
         }
       } catch (err) {
         console.info('Serverless API tidak terjangkau, beralih ke OCR Lokal...', err);
       }
 
-      // Fallback langsung ke OCR Lokal jika belum ada API Key atau dijalankan lokal tanpa backend
       return await extractWithLocalOCR(dataUrl);
     }
 
@@ -547,7 +729,7 @@
       if (trimmed === '' || trimmed === '-' || trimmed.toLowerCase() === 'null' || trimmed.toLowerCase() === 'kosong') {
         return 'kosong';
       }
-      return trimmed;
+      return fixSingleDocFormat(trimmed);
     }
 
     async function handleFilesUpload(fileList) {
@@ -571,16 +753,12 @@
 
           let targetIdx = -1;
 
-          // Prioritas 1: Baris yang dipilih manual oleh user
           if (selectedRowIndex !== null && excelRows[selectedRowIndex]) {
             targetIdx = selectedRowIndex;
-          }
-          // Prioritas 2: Cocokkan IDPEL dari foto dengan IDPEL di Excel
-          else if (cleanIdpel) {
+          } else if (cleanIdpel) {
             targetIdx = excelRows.findIndex(r => String(r['IDPEL']).trim() === cleanIdpel);
           }
 
-          // Jika IDPEL ada di foto tapi belum ada di tabel Excel, tambahkan baris baru
           if (targetIdx === -1 && cleanIdpel) {
             const newRow = {};
             excelColumns.forEach(c => newRow[c] = '');
@@ -594,9 +772,9 @@
           if (targetIdx !== -1) {
             Object.assign(excelRows[targetIdx], mapped);
             lastUpdatedRowIdx = targetIdx;
+            fixAllExistingRowsRoman(true);
             saveToStorage();
 
-            // Lompat ke halaman tempat baris tersebut berada
             currentPage = Math.floor(targetIdx / pageSize) + 1;
             renderAll();
 
@@ -606,7 +784,7 @@
               logId,
               'success',
               `[${extracted.engineUsed}] IDPEL ${rowIdpel} (${rowName}) berhasil diisi!`,
-              mapped
+              excelRows[targetIdx]
             );
           } else {
             updateLogItem(
@@ -662,7 +840,7 @@
     });
 
     // =========================================================================
-    // 5. RENDER TABEL, ANTREAN IDPEL, DAN LOG
+    // 6. RENDER TABEL, ANTREAN IDPEL, DAN LOG
     // =========================================================================
     function isRowFilled(row) {
       return REQUIRED_DOC_COLS.some(col => {
@@ -684,7 +862,6 @@
       document.getElementById('progressBarFill').style.width = `${pct}%`;
       document.getElementById('remainingCountBadge').textContent = `${emptyCount} belum terisi`;
 
-      // Update Antrean IDPEL Berikutnya
       const emptyRows = excelRows.filter(r => !isRowFilled(r));
       if (emptyRows.length > 0) {
         const targetQueueRow = emptyRows[queueSkipOffset % emptyRows.length];
@@ -797,7 +974,7 @@
 
     window.updateCellValue = function (rowIndex, colName, newVal) {
       if (!excelRows[rowIndex]) return;
-      excelRows[rowIndex][colName] = newVal.trim();
+      excelRows[rowIndex][colName] = fixSingleDocFormat(newVal.trim());
       saveToStorage();
       renderAll();
     };
@@ -878,7 +1055,7 @@
     });
 
     // =========================================================================
-    // 6. LOG RIWAYAT & MODAL PENGATURAN
+    // 7. LOG RIWAYAT & MODAL PENGATURAN
     // =========================================================================
     function addLogItem(status, message, details = null) {
       const container = document.getElementById('extractionLogs');
