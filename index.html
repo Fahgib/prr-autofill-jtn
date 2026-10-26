@@ -88,30 +88,70 @@
     <!-- Left Column: Queue, Photo Upload, Extraction History -->
     <div class="lg:col-span-4 space-y-5 flex flex-col">
 
-      <!-- Next IDPEL Helper Card -->
-      <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-        <div class="flex items-center justify-between mb-2">
+      <!-- Next IDPEL Helper Card (DENGAN MAJU/MUNDUR & SKIP DATA KOSONG) -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
+        <div class="flex items-center justify-between">
           <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
             <i data-lucide="list-todo" class="w-4 h-4 text-teal-600"></i>
             Antrean IDPEL Belum Terisi
           </span>
-          <span id="remainingCountBadge" class="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
-            0 tersisa
-          </span>
+          <div class="flex items-center gap-1.5">
+            <span id="queuePositionBadge" class="text-[11px] font-mono font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
+              0 / 0
+            </span>
+            <span id="remainingCountBadge" class="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+              0 belum terisi
+            </span>
+          </div>
         </div>
 
-        <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 flex items-center justify-between gap-2">
-          <div class="min-w-0">
-            <div class="text-[11px] text-slate-500 truncate" id="nextQueueName">Memuat data...</div>
-            <div class="font-mono text-lg font-bold text-slate-900 tracking-tight" id="nextQueueIdpel">-</div>
+        <!-- Kotak Info IDPEL + Navigasi Mundur & Maju -->
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2.5">
+          <div class="flex items-center justify-between gap-2">
+            <div class="min-w-0 flex-1">
+              <div class="text-[11px] text-slate-500 truncate font-medium" id="nextQueueName">Memuat data...</div>
+              <div class="flex items-center gap-2 mt-0.5">
+                <span class="font-mono text-lg font-bold text-slate-900 tracking-tight" id="nextQueueIdpel">-</span>
+                <span id="nextQueueRowBadge" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-700 font-semibold">Baris #-</span>
+              </div>
+            </div>
+
+            <!-- Tombol Navigasi Mundur (<) dan Maju (>) -->
+            <div class="flex items-center gap-1 shrink-0">
+              <button
+                id="prevQueueIdpelBtn"
+                title="Mundur ke IDPEL sebelumnya"
+                class="p-2 text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition shadow-sm disabled:opacity-40"
+              >
+                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+              </button>
+              <button
+                id="skipNextIdpelBtn"
+                title="Maju / Lewati ke IDPEL berikutnya"
+                class="p-2 text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg transition shadow-sm disabled:opacity-40"
+              >
+                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+              </button>
+            </div>
           </div>
-          <div class="flex items-center gap-1.5 shrink-0">
-            <button id="copyNextIdpelBtn" class="inline-flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition shadow-sm">
+
+          <!-- Action Buttons di Dalam Antrean -->
+          <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200/80">
+            <button
+              id="copyNextIdpelBtn"
+              class="inline-flex items-center justify-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition shadow-sm"
+            >
               <i data-lucide="copy" class="w-3.5 h-3.5"></i>
               <span>Salin IDPEL</span>
             </button>
-            <button id="skipNextIdpelBtn" title="Lewati ke IDPEL berikutnya" class="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-200/70 rounded-lg transition">
-              <i data-lucide="chevron-right" class="w-4 h-4"></i>
+
+            <button
+              id="markQueueKosongBtn"
+              title="Isi kelima kolom dengan kata 'kosong' untuk IDPEL ini dan lanjut ke antrean berikutnya"
+              class="inline-flex items-center justify-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold px-3 py-2 rounded-lg transition shadow-sm"
+            >
+              <i data-lucide="ban" class="w-3.5 h-3.5"></i>
+              <span>Data Kosong (Skip)</span>
             </button>
           </div>
         </div>
@@ -289,7 +329,7 @@
               <th class="py-2.5 px-3 font-semibold min-w-[185px] bg-amber-50/70 text-amber-900">NO DPR</th>
               <th class="py-2.5 px-3 font-semibold min-w-[185px] bg-amber-50/70 text-amber-900">NO DUPPR</th>
               <th class="py-2.5 px-3 font-semibold min-w-[195px] bg-amber-50/70 text-amber-900">NO SUPPR</th>
-              <th class="py-2.5 px-3 font-semibold w-20 text-center">Aksi</th>
+              <th class="py-2.5 px-3 font-semibold w-28 text-center">Aksi</th>
             </tr>
           </thead>
           <tbody id="excelTableBody" class="divide-y divide-slate-200"></tbody>
@@ -325,7 +365,7 @@
       <div class="space-y-3 text-xs text-slate-600">
         <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-1">
           <div class="font-semibold">Cara Kerja Live Sync:</div>
-          <p>Setiap kali Anda Paste foto (<kbd class="px-1 py-0.5 bg-white border rounded">Ctrl+V</kbd>) atau mengubah isi tabel, aplikasi otomatis mengirim perubahan ke Google Spreadsheet Anda detik itu juga.</p>
+          <p>Setiap kali Anda Paste foto (<kbd class="px-1 py-0.5 bg-white border rounded">Ctrl+V</kbd>), klik <b>Data Kosong (Skip)</b>, atau mengubah isi tabel, aplikasi otomatis mengirim perubahan ke Google Spreadsheet Anda detik itu juga.</p>
         </div>
 
         <div>
@@ -428,6 +468,7 @@
 
     const DEFAULT_SAMPLE_ROWS = [
       { BULAN_REKAP: 202609, IDPEL: '544103539467', UNITUPI: 54, UNITAP: 54410, UNITUP: 54410, NAMA: 'ROESMAN', ALAMAT: 'JL.SWADAYA RT.04/06 RW BUNGA', 'NO dupr': '005/54410/DUPR/VI/2021', 'NO BAPR': '0005/54410/BAPR/VI/2021', 'NO DPR': '0005/54410/DPR/VI/2021', 'NO DUPPR': '0005/54410/DUPPR/VI/2021', 'NO SUPPR': '0005/54410/SUPPR-UP/VI/2021', TARIF: 'R1', DAYA: 1300, RP_DPP_PRR: 9833402 },
+      { BULAN_REKAP: 202609, IDPEL: '544103443424', UNITUPI: 54, UNITAP: 54410, UNITUP: 54410, NAMA: 'ROSLIANA TAMBUNAN', ALAMAT: 'JL H KAIMAN RT.02/05', 'NO dupr': '', 'NO BAPR': '', 'NO DPR': '', 'NO DUPPR': '', 'NO SUPPR': '', TARIF: 'R1', DAYA: 1300, RP_DPP_PRR: 0 },
       { BULAN_REKAP: 202609, IDPEL: '544103800621', UNITUPI: 54, UNITAP: 54410, UNITUP: 54410, NAMA: 'RONY KARYAWANSYAH', ALAMAT: 'JATINEGARA', 'NO dupr': '', 'NO BAPR': '', 'NO DPR': '', 'NO DUPPR': '', 'NO SUPPR': '', TARIF: 'R1', DAYA: 1300, RP_DPP_PRR: 0 },
       { BULAN_REKAP: 202609, IDPEL: '544103597107', UNITUPI: 54, UNITAP: 54410, UNITUP: 54410, NAMA: 'TUBAGUS TONY H SH', ALAMAT: 'JLF NO 14 A MENDAL', 'NO dupr': '', 'NO BAPR': '', 'NO DPR': '', 'NO DUPPR': '', 'NO SUPPR': '', TARIF: 'R1', DAYA: 1300, RP_DPP_PRR: 11369644 },
       { BULAN_REKAP: 202609, IDPEL: '544101471444', UNITUPI: 54, UNITAP: 54410, UNITUP: 54410, NAMA: 'SARYAT', ALAMAT: 'JL OTISTA 3 RT7/8', 'NO dupr': '', 'NO BAPR': '', 'NO DPR': '', 'NO DUPPR': '', 'NO SUPPR': '', TARIF: 'R1', DAYA: 2200, RP_DPP_PRR: 1377014 }
@@ -438,6 +479,7 @@
     let currentFileName = 'Penghapusan Prr Dekom JTN.xlsx';
     let selectedRowIndex = null;
     let queueSkipOffset = 0;
+    let currentQueueOriginalIndex = null; // Menyimpan index baris asli dari antrean yang sedang tampil
     let currentPage = 1;
     const pageSize = 50;
     let lastUpdatedRowIdx = null;
@@ -455,21 +497,18 @@
       const parts = cleaned.split('/');
       if (parts.length < 5) return cleaned;
 
-      // Segmen 1: Nomor Urut (contoh: 003, 0002)
       let seq = parts[0]
         .replace(/[OQD]/g, '0')
         .replace(/[IL|!]/g, '1')
         .replace(/S/g, '5')
         .replace(/B/g, '8');
 
-      // Segmen 2: Kode Unit (mendukung 2-6 digit seperti 54, 410, 54410)
       let unit = parts[1]
         .replace(/[OQD]/g, '0')
         .replace(/[IL|!]/g, '1')
         .replace(/S/g, '5')
         .replace(/B/g, '8');
 
-      // Segmen 3: Jenis Dokumen (DUPR, BAPR, DPR, DUPPR, SUPPR-UP / SUPPR-AP)
       let docType = parts[2]
         .replace(/^[0O]UPPR$/, 'DUPPR')
         .replace(/^[0O]UPR$/, 'DUPR')
@@ -480,7 +519,6 @@
         docType = expectedDocType;
       }
 
-      // Segmen 4: Bulan Romawi (I s/d XII) -> ubah semua angka 1 / l / | menjadi I
       let roman = parts[3]
         .replace(/[1L|!]/g, 'I')
         .replace(/0/g, 'O');
@@ -499,7 +537,6 @@
         }
       }
 
-      // Segmen 5: Tahun (2010 - 2026)
       let year = parts[4]
         .replace(/[OQD]/g, '0')
         .replace(/[IL|!]/g, '1');
@@ -851,17 +888,14 @@
       });
     }
 
-    // Engine 2: Smart Local OCR + Support Kode Unit 2-6 Digit (54, 410, 54410)
     async function extractWithLocalOCR(dataUrl) {
       const enhancedDataUrl = await upscaleImageForOCR(dataUrl);
       const { data: { text } } = await Tesseract.recognize(enhancedDataUrl, 'eng');
       const normalized = text.replace(/\r\n/g, '\n');
 
-      // 1. Cari ID Pelanggan (12 digit angka)
       const idpelMatch = normalized.match(/\b(54\d{10}|\d{12})\b/);
       const idpel = idpelMatch ? idpelMatch[1] : '';
 
-      // Cari bulan dominan dari kolom Tgl Proses (DD/MM/YYYY) di foto
       let globalRomanMonth = null;
       const allDates = [...normalized.matchAll(/\b\d{2}\/(\d{2})\/(?:19|20)\d{2}\b/g)];
       if (allDates.length > 0) {
@@ -869,9 +903,7 @@
         if (MONTH_TO_ROMAN[mNum]) globalRomanMonth = MONTH_TO_ROMAN[mNum];
       }
 
-      // 2. Pencari Nomor Dokumen Fleksibel (Kode Unit bisa 2 s/d 6 digit: 54, 410, 54410)
       function findDocNumber(docTypeRegex, canonicalType = null, rowLabelRegex = null) {
-        // Prioritas A: Jika diberikan label baris (misal ENTRI DUPPR vs BAPPR, atau TERBIT SUPPR-UP vs SUPPR-UPI)
         if (rowLabelRegex) {
           const labelPattern = new RegExp(
             `${rowLabelRegex}[^\\n]*?([0-9OQDIL|!SB]{1,6}\\s*\\/\\s*[0-9OQDIL|!SB]{2,6}\\s*\\/\\s*${docTypeRegex}\\s*\\/\\s*[IVXLCDM0-9L|!]+\\s*\\/\\s*(?:19|20)[0-9OQDIL|!]{2})([^\\n]*)`,
@@ -891,7 +923,6 @@
           }
         }
 
-        // Prioritas B: Pencarian langsung berdasarkan pola nomor dokumen
         const lineRegex = new RegExp(
           `([0-9OQDIL|!SB]{1,6}\\s*\\/\\s*[0-9OQDIL|!SB]{2,6}\\s*\\/\\s*${docTypeRegex}\\s*\\/\\s*[IVXLCDM0-9L|!]+\\s*\\/\\s*(?:19|20)[0-9OQDIL|!]{2})([^\\n]*)`,
           'i'
@@ -920,7 +951,6 @@
         bapr: findDocNumber('[B8]APR', 'BAPR'),
         dpr: findDocNumber('[DO0]PR', 'DPR'),
         duppr: findDocNumber('[DO0]UPPR', 'DUPPR', 'ENTRI\\s+DUPPR'),
-        // Untuk SUPPR: Ambil dari baris 8 (TERBIT SUPPR-UP yang bisa berisi SUPPR-UP atau SUPPR-AP, bukan SUPPR-UPI)
         suppr: findDocNumber('[S5]UPPR-(?:UP|AP)(?!I)', null, 'TERBIT\\s+SUPPR-UP(?!I)'),
         engineUsed: 'OCR Lokal (Multi-Digit 410/54410)'
       };
@@ -1087,7 +1117,7 @@
     });
 
     // =========================================================================
-    // 7. RENDER TABEL, ANTREAN IDPEL, DAN LOG
+    // 7. RENDER TABEL, ANTREAN IDPEL (MAJU/MUNDUR & SET KOSONG), DAN LOG
     // =========================================================================
     function isRowFilled(row) {
       return REQUIRED_DOC_COLS.some(col => {
@@ -1096,12 +1126,53 @@
       });
     }
 
+    // Fungsi menandai 1 baris sebagai "kosong" semua (bisa dipanggil dari Antrean maupun Tabel)
+    window.markRowAsAllKosong = async function (rowIndex) {
+      if (rowIndex === null || rowIndex === undefined || !excelRows[rowIndex]) return;
+
+      const row = excelRows[rowIndex];
+      REQUIRED_DOC_COLS.forEach(col => {
+        row[col] = 'kosong';
+      });
+
+      lastUpdatedRowIdx = rowIndex;
+      saveToStorage();
+
+      // Pindahkan halaman tabel ke baris yang baru ditandai kosong agar terlihat
+      currentPage = Math.floor(rowIndex / pageSize) + 1;
+      renderAll();
+
+      const idpel = row['IDPEL'] || '-';
+      const nama = row['NAMA'] || '';
+      const logId = addLogItem('loading', `Menandai IDPEL ${idpel} (${nama}) sebagai "kosong"...`);
+
+      let syncMsg = '';
+      if (getGasUrl()) {
+        try {
+          await syncSingleRowToGoogleSheet(row);
+          syncMsg = ' + Tersimpan di Google Spreadsheet!';
+        } catch (err) {
+          syncMsg = ` (Gagal sync Sheet: ${err.message})`;
+        }
+      }
+
+      updateLogItem(
+        logId,
+        'success',
+        `IDPEL ${idpel} (${nama}) ditandai "kosong" & lanjut ke antrean berikutnya${syncMsg}`,
+        row
+      );
+    };
+
     function renderAll() {
       document.getElementById('activeFileName').textContent = currentFileName;
 
       const total = excelRows.length;
       const filledCount = excelRows.filter(isRowFilled).length;
-      const emptyCount = total - filledCount;
+      const emptyRowsWithIdx = excelRows
+        .map((row, idx) => ({ row, idx }))
+        .filter(item => !isRowFilled(item.row));
+      const emptyCount = emptyRowsWithIdx.length;
       const pct = total > 0 ? Math.round((filledCount / total) * 100) : 0;
 
       document.getElementById('statsSummaryText').textContent =
@@ -1109,15 +1180,36 @@
       document.getElementById('progressBarFill').style.width = `${pct}%`;
       document.getElementById('remainingCountBadge').textContent = `${emptyCount} belum terisi`;
 
-      const emptyRows = excelRows.filter(r => !isRowFilled(r));
-      if (emptyRows.length > 0) {
-        const targetQueueRow = emptyRows[queueSkipOffset % emptyRows.length];
+      const prevBtn = document.getElementById('prevQueueIdpelBtn');
+      const nextBtn = document.getElementById('skipNextIdpelBtn');
+      const markKosongBtn = document.getElementById('markQueueKosongBtn');
+
+      if (emptyCount > 0) {
+        // Pastikan queueSkipOffset selalu positif dan berada dalam rentang [0, emptyCount - 1]
+        queueSkipOffset = ((queueSkipOffset % emptyCount) + emptyCount) % emptyCount;
+        const targetItem = emptyRowsWithIdx[queueSkipOffset];
+        const targetQueueRow = targetItem.row;
+        currentQueueOriginalIndex = targetItem.idx;
+
         document.getElementById('nextQueueIdpel').textContent = targetQueueRow['IDPEL'] || '-';
         document.getElementById('nextQueueName').textContent =
           `${targetQueueRow['NAMA'] || 'Tanpa Nama'} — ${targetQueueRow['ALAMAT'] || ''}`;
+        document.getElementById('nextQueueRowBadge').textContent = `Baris #${targetItem.idx + 1}`;
+        document.getElementById('queuePositionBadge').textContent = `Urutan ${queueSkipOffset + 1} / ${emptyCount}`;
+
+        prevBtn.disabled = emptyCount <= 1;
+        nextBtn.disabled = emptyCount <= 1;
+        markKosongBtn.disabled = false;
       } else {
+        currentQueueOriginalIndex = null;
         document.getElementById('nextQueueIdpel').textContent = 'Semua Selesai!';
         document.getElementById('nextQueueName').textContent = 'Seluruh baris telah terisi.';
+        document.getElementById('nextQueueRowBadge').textContent = 'Selesai';
+        document.getElementById('queuePositionBadge').textContent = '0 / 0';
+
+        prevBtn.disabled = true;
+        nextBtn.disabled = true;
+        markKosongBtn.disabled = true;
       }
 
       renderTable();
@@ -1160,6 +1252,7 @@
       tbody.innerHTML = pageItems
         .map(({ row, originalIndex }) => {
           const isSelectedTarget = selectedRowIndex === originalIndex;
+          const isCurrentQueue = currentQueueOriginalIndex === originalIndex;
           const isRecentlyUpdated = lastUpdatedRowIdx === originalIndex;
 
           const renderDocCell = colName => {
@@ -1185,7 +1278,9 @@
           };
 
           return `
-            <tr class="hover:bg-slate-50/90 transition ${isRecentlyUpdated ? 'row-updated' : ''} ${isSelectedTarget ? 'bg-teal-50/70' : ''}">
+            <tr class="hover:bg-slate-50/90 transition ${isRecentlyUpdated ? 'row-updated' : ''} ${
+              isSelectedTarget ? 'bg-teal-50/80' : isCurrentQueue ? 'bg-amber-50/50' : ''
+            }">
               <td class="py-2 px-3 text-center font-mono text-slate-400">${originalIndex + 1}</td>
               <td class="py-2 px-3 font-mono font-semibold text-slate-900">
                 <div class="flex items-center gap-1.5">
@@ -1199,17 +1294,27 @@
                 ${row['NAMA'] || '-'}
               </td>
               ${REQUIRED_DOC_COLS.map(renderDocCell).join('')}
-              <td class="py-2 px-3 text-center">
-                <button
-                  onclick="selectRowAsTarget(${originalIndex})"
-                  class="px-2 py-1 rounded text-[11px] font-medium transition ${
-                    isSelectedTarget
-                      ? 'bg-teal-600 text-white'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                  }"
-                >
-                  ${isSelectedTarget ? 'Aktif' : 'Target'}
-                </button>
+              <td class="py-2 px-2 text-center">
+                <div class="flex items-center justify-center gap-1">
+                  <button
+                    onclick="selectRowAsTarget(${originalIndex})"
+                    title="Jadikan target baris manual"
+                    class="px-2 py-1 rounded text-[11px] font-medium transition ${
+                      isSelectedTarget
+                        ? 'bg-teal-600 text-white'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    }"
+                  >
+                    ${isSelectedTarget ? 'Aktif' : 'Target'}
+                  </button>
+                  <button
+                    onclick="markRowAsAllKosong(${originalIndex})"
+                    title="Set semua kolom baris ini menjadi 'kosong'"
+                    class="px-1.5 py-1 rounded text-[11px] font-medium bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition"
+                  >
+                    Kosong
+                  </button>
+                </div>
               </td>
             </tr>
           `;
@@ -1261,6 +1366,7 @@
       navigator.clipboard.writeText(String(text));
     };
 
+    // Tombol Salin IDPEL di Kartu Antrean
     document.getElementById('copyNextIdpelBtn').addEventListener('click', function () {
       const idpel = document.getElementById('nextQueueIdpel').textContent.trim();
       if (!idpel || idpel === '-' || idpel === 'Semua Selesai!') return;
@@ -1270,12 +1376,33 @@
       setTimeout(() => {
         this.innerHTML = originalHtml;
         lucide.createIcons();
-      }, 1200);
+      }, 1000);
     });
 
+    // Tombol Mundur (<) di Kartu Antrean
+    document.getElementById('prevQueueIdpelBtn').addEventListener('click', () => {
+      queueSkipOffset--;
+      renderAll();
+      if (currentQueueOriginalIndex !== null) {
+        currentPage = Math.floor(currentQueueOriginalIndex / pageSize) + 1;
+        renderTable();
+      }
+    });
+
+    // Tombol Maju (>) di Kartu Antrean
     document.getElementById('skipNextIdpelBtn').addEventListener('click', () => {
       queueSkipOffset++;
       renderAll();
+      if (currentQueueOriginalIndex !== null) {
+        currentPage = Math.floor(currentQueueOriginalIndex / pageSize) + 1;
+        renderTable();
+      }
+    });
+
+    // Tombol "Data Kosong (Skip)" di Kartu Antrean -> Isi kelima kolom dengan 'kosong' & lanjut otomatis
+    document.getElementById('markQueueKosongBtn').addEventListener('click', () => {
+      if (currentQueueOriginalIndex === null) return;
+      markRowAsAllKosong(currentQueueOriginalIndex);
     });
 
     document.getElementById('searchInput').addEventListener('input', () => {
